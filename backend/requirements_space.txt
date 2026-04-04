@@ -1,0 +1,26 @@
+# FreshScan AI — Backend Dependencies (HF Spaces version)
+# torch and torchvision are installed separately in the Dockerfile
+# with --index-url https://download.pytorch.org/whl/cpu to get the CPU-only build
+
+# ── Web Framework ─────────────────────────────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+
+# ── Database / Auth ───────────────────────────────────────────────────────────
+supabase>=2.4.0
+
+# ── Image Processing ──────────────────────────────────────────────────────────
+Pillow>=10.3.0
+
+# ── Numerics ──────────────────────────────────────────────────────────────────
+numpy>=1.26.0
+
+# ── Environment ───────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0
+
+# ── HTTP / Multipart ──────────────────────────────────────────────────────────
+python-multipart>=0.0.9
+httpx>=0.27.0
+
+# ── HF Hub (model download at container startup) ──────────────────────────────
+huggingface_hub>=0.22.0
