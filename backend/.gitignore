@@ -5,11 +5,6 @@ __pycache__/
 *.pyd
 .env
 
-# Model weights (too large for git)
-*.pth
-*.onnx
-*.bin
-
 # HuggingFace cache
 .cache/
 
