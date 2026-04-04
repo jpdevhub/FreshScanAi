@@ -45,20 +45,24 @@ const steps = [
 
 const faqs = [
   {
-    q: 'What biomarkers does FreshScan AI analyze?',
-    a: 'Our edge-AI model evaluates gill color saturation (hemoglobin oxidation), corneal opacity index, epidermal mucus viscosity, and scale reflectance patterns using dual-stream spectral analysis.',
+    q: 'How does the dual-stream AI model work?',
+    a: 'FreshScan uses two specialized neural networks in parallel. Stream A is a fine-tuned MobileNetV2 that analyzes the full fish body for overall freshness classification (C1 Fresh / C2 Moderate / C3 Spoiled). Stream B is a custom BiomarkerCNN that inspects micro-regions — eyes and gills — for localized freshness signals. Their outputs are fused with temperature-scaled confidence scoring to produce the final Freshness Index.',
   },
   {
-    q: 'Does it work offline?',
-    a: 'Yes. The TFLite model runs entirely on-device. No server connection is required for scanning. Market map and sync features need connectivity.',
+    q: 'What do the freshness grades mean?',
+    a: 'The Freshness Index (0–100) maps to letter grades: A+ (≥92) and A (≥80) are prime quality, B (≥65) is acceptable, C (≥50) is borderline, and D (below 50) is classified as SPOILED. A score of 65+ is the FRESH threshold. The system also estimates how many hours the fish can safely be stored at 0–4°C.',
   },
   {
-    q: 'What species are supported?',
-    a: 'Currently trained on 47 freshwater and saltwater species common to South Asian wet markets. Custom model training for your region available on Enterprise plan.',
+    q: 'What is Auto-Scan mode vs. manual scan?',
+    a: 'Auto-Scan accepts a single photo and automatically routes it through a fish-validation gate (CLIP-based) before running both streams. Manual scan mode lets you upload separate Body, Eye, and Gill images for a more granular three-part assessment — useful for advanced users who want to isolate specific biomarkers.',
   },
   {
-    q: 'How accurate is the Freshness Index?',
-    a: 'Our model achieves 98.9% accuracy on the FreshBench-2026 benchmark, validated against laboratory histamine and TVB-N measurements.',
+    q: 'What is the Grad-CAM overlay?',
+    a: 'Grad-CAM (Gradient-weighted Class Activation Mapping) generates a heatmap highlighting exactly which regions of your image drove the freshness prediction. High-activation zones on gills, eyes, or scales are overlaid in a jet colormap so you can see what the model is responding to, not just the score it outputs.',
+  },
+  {
+    q: 'What is the Trust Map?',
+    a: 'The Trust Map is a live, crowdsourced heatmap of local fish vendors and markets. Every anonymized scan tied to a vendor location updates that vendor\'s average freshness score and trust rating in the Supabase database. You can use the map to identify consistently high-quality vendors in your area before you buy.',
   },
 ];
 
