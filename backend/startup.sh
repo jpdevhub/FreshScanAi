@@ -13,6 +13,7 @@ from huggingface_hub import hf_hub_download
 
 repo_id  = os.environ.get('HF_MODEL_REPO', 'karansingh12/freshscan-models')
 model_dir = os.environ.get('MODEL_DIR', '/home/user/models')
+token = os.environ.get('MODEL_TOKEN')
 
 os.makedirs(model_dir, exist_ok=True)
 
@@ -25,6 +26,7 @@ hf_hub_download(
     repo_id=repo_id,
     filename='freshscan_stream_a_body.pth',
     local_dir=model_dir,
+    token=token,
 )
 print('  Stream A ready.')
 
@@ -33,6 +35,7 @@ hf_hub_download(
     repo_id=repo_id,
     filename='stream_b_checkpoint.pth',
     local_dir=model_dir,
+    token=token,
 )
 print('  Stream B ready.')
 print()
