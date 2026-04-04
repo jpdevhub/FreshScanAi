@@ -1,0 +1,27 @@
+# FreshScan AI — Backend Dependencies
+# Install with: pip install -r requirements.txt
+
+# ── Web Framework ─────────────────────────────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+
+# ── Database / Auth ───────────────────────────────────────────────────────────
+supabase>=2.4.0
+
+# ── Image Processing ──────────────────────────────────────────────────────────
+Pillow>=10.3.0
+
+# ── ML / Inference (optional — server starts without them in demo mode) ───────
+# Comment these out if you don't have GPU/model files and just want demo mode.
+torch>=2.2.0
+torchvision>=0.17.0
+
+# ── Numerics ──────────────────────────────────────────────────────────────────
+numpy>=1.26.0
+
+# ── Environment ───────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0
+
+# ── HTTP / Multipart ──────────────────────────────────────────────────────────
+python-multipart>=0.0.9
+httpx>=0.27.0
