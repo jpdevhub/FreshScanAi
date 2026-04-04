@@ -13,27 +13,27 @@ export default function ScannerPage() {
   const [error, setError]         = useState('');
   const [flashOn, setFlashOn]     = useState(false);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
-  // Preview for uploaded photo
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
+  // Controls whether the camera stream is active
+  const [cameraActive, setCameraActive] = useState(true);
 
   const videoRef      = useRef<HTMLVideoElement>(null);
   const progressRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef  = useRef<HTMLInputElement>(null);
+  const streamRef     = useRef<MediaStream | null>(null);
 
-  // ── Camera stream ──────────────────────────────────────────────────────────
+  // ── Camera stream — only runs when cameraActive and no upload preview ────
   useEffect(() => {
-    // Don't start camera if we're showing an uploaded image preview
-    if (uploadPreviewUrl) return;
+    if (!cameraActive || uploadPreviewUrl) return;
 
-    let stream: MediaStream | null = null;
     let cancelled = false;
 
     async function startCamera() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
-        if (!cancelled && videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) videoRef.current.srcObject = stream;
       } catch (err) {
         if (!cancelled) console.error('Camera error:', err);
       }
@@ -42,10 +42,11 @@ export default function ScannerPage() {
     startCamera();
     return () => {
       cancelled = true;
-      stream?.getTracks().forEach(t => t.stop());
+      streamRef.current?.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
       if (videoRef.current) videoRef.current.srcObject = null;
     };
-  }, [facingMode, uploadPreviewUrl]);
+  }, [facingMode, cameraActive, uploadPreviewUrl]);
 
   // ── Progress bar ───────────────────────────────────────────────────────────
   const startProgressBar = useCallback(() => {
@@ -81,6 +82,9 @@ export default function ScannerPage() {
       const msg = err instanceof Error ? err.message : 'Scan failed.';
       setError(msg);
       setScanPhase('error');
+      // Restart camera & clear preview so user can try again immediately
+      setUploadPreviewUrl(null);
+      setCameraActive(true);
     }
   }, [startProgressBar, stopProgressBar, navigate]);
 
@@ -102,10 +106,16 @@ export default function ScannerPage() {
     setScanPhase('capturing');
     setError('');
 
+    // Stop camera immediately after capture — restarts on reset
     const blob = await captureFrame();
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setCameraActive(false);
     if (!blob) {
       setError('Failed to capture camera frame.');
       setScanPhase('error');
+      setCameraActive(true); // restart camera so user can try again
       return;
     }
     await submitAndNavigate(blob);
@@ -138,6 +148,7 @@ export default function ScannerPage() {
     setFreshness(null);
     setError('');
     setUploadPreviewUrl(null);
+    setCameraActive(true);          // restart camera on reset
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
