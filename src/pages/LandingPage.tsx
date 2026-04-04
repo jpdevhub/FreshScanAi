@@ -76,9 +76,6 @@ export default function LandingPage() {
     <div className="relative">
       {/* ── HERO ── */}
       <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-6 md:px-16 lg:px-24 py-20 overflow-hidden text-center">
-        {/* Background accent line */}
-        <div className="absolute left-0 top-0 w-1 h-full bg-neon/20" />
-
         <div className="relative z-10 max-w-5xl mx-auto">
           <h1 className="font-headline text-[3.5rem] md:text-[5rem] lg:text-[7rem] leading-[1.05] font-extrabold tracking-tighter text-white mb-8">
             Fish Freshness
