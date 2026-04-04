@@ -309,7 +309,7 @@ async def get_me(current_user=Depends(get_current_user)):
         "id":        current_user.id,
         "email":     current_user.email,
         "full_name": current_user.user_metadata.get("full_name"),
-        "avatar_url":current_user.user_metadata.get("avatar_url"),
+        "avatar_url":current_user.user_metadata.get("avatar_url") or current_user.user_metadata.get("picture"),
     }
 
 
@@ -587,3 +587,184 @@ async def get_markets():
     except Exception:
         # Migration not applied yet — return empty markets, map still renders
         return {"success": True, "markets": [], "warning": "Run SQL migration and seed vendors for map data."}
+
+
+# ── GRAD-CAM ──────────────────────────────────────────────────────────────────
+
+def _generate_synthetic_heatmap(img: Image.Image) -> str:
+    """
+    Produce a synthetic 'neon-green on dark' heatmap overlay for demo mode
+    when PyTorch / models are not available. Uses PIL only.
+    """
+    import numpy as np
+
+    width, height = img.size
+    # Build a radial-gradient attention mask centred on image
+    cx, cy = width / 2, height / 2
+    y_idx, x_idx = np.ogrid[:height, :width]
+    dist = np.sqrt((x_idx - cx) ** 2 + (y_idx - cy) ** 2)
+    max_dist = np.sqrt(cx ** 2 + cy ** 2)
+    cam = 1.0 - np.clip(dist / max_dist, 0, 1)
+    cam = cam ** 0.6  # soften fall-off
+
+    # Jet-like colormap (blue → green → yellow → red)
+    r = np.clip(1.5 - abs(cam * 4.0 - 3.0), 0, 1)
+    g = np.clip(1.5 - abs(cam * 4.0 - 2.0), 0, 1)
+    b = np.clip(1.5 - abs(cam * 4.0 - 1.0), 0, 1)
+
+    heatmap = np.stack([r, g, b], axis=2)
+    heatmap_uint8 = (heatmap * 255).astype(np.uint8)
+    heatmap_img = Image.fromarray(heatmap_uint8, "RGB").resize((width, height), Image.BILINEAR)
+
+    orig_arr = np.array(img.convert("RGB"), dtype=np.float32)
+    heat_arr = np.array(heatmap_img, dtype=np.float32)
+    blended  = np.clip(0.55 * orig_arr + 0.45 * heat_arr, 0, 255).astype(np.uint8)
+
+    out = Image.fromarray(blended)
+    buf = io.BytesIO()
+    out.save(buf, format="JPEG", quality=88)
+    return "data:image/jpeg;base64," + __import__("base64").b64encode(buf.getvalue()).decode()
+
+
+@app.post("/api/v1/gradcam")
+async def generate_gradcam(
+    image: UploadFile = File(...),
+    current_user=Depends(get_current_user),
+):
+    """
+    Generate a Grad-CAM activation overlay for the uploaded image.
+
+    • When PyTorch + models are loaded  → real Grad-CAM via Stream A (MobileNetV2).
+    • Demo mode (no PyTorch / no models) → synthetic radial heat overlay so the
+      UI card remains functional without ML dependencies.
+
+    Returns:
+        gradcam_image   : base64 data-URI (JPEG)
+        predicted_class : human-readable class string
+        class_index     : 0 | 1 | 2  (C1 Fresh / C2 Moderate / C3 Spoiled)
+        mode            : "real" | "demo"
+    """
+    import base64
+
+    image_bytes = await image.read()
+    img_pil = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+
+    CLASS_NAMES = ["C1 – FRESH", "C2 – MODERATE", "C3 – SPOILED"]
+
+    # ── Demo / no-torch path ────────────────────────────────────────────────────
+    if not _torch_available or not _models_loaded:
+        # Lightweight PIL fish heuristic (no ML models required):
+        # Fish images are dominated by silver/grey/brown scales; we reject
+        # clearly artificial images (very high saturation, pure white, etc.).
+        import numpy as np
+        arr = np.array(img_pil.resize((64, 64)), dtype=np.float32)
+        mean_rgb   = arr.mean(axis=(0, 1))          # (R, G, B)
+        brightness = mean_rgb.mean()                 # overall brightness
+        channel_std = arr.std(axis=(0, 1)).mean()    # colour variance
+        is_likely_fish = (
+            brightness > 20          # not nearly-black
+            and brightness < 235     # not nearly-white
+            and channel_std > 8      # has some texture / colour detail
+        )
+        if not is_likely_fish:
+            raise HTTPException(
+                status_code=422,
+                detail="NOT_A_FISH: The uploaded image does not appear to contain a fish.",
+            )
+        import random
+        pred_class = random.randint(0, 2)
+        overlay_b64 = _generate_synthetic_heatmap(img_pil)
+        return {
+            "gradcam_image":   overlay_b64,
+            "predicted_class": CLASS_NAMES[pred_class],
+            "class_index":     pred_class,
+            "mode":            "demo",
+        }
+
+    # ── Real Grad-CAM path ──────────────────────────────────────────────────────
+    import torch
+    import numpy as np
+    from inference import stream_a_model, stream_a_transforms, device
+    from router import is_valid_fish_image
+
+    # Fish validity gate — same gate used by /api/v1/scan-auto
+    is_fish, gate_score = is_valid_fish_image(img_pil)
+    print(f"   [GradCAM] Fish gate: {'PASS' if is_fish else 'FAIL'} (score={gate_score:.2%})")
+    if not is_fish:
+        raise HTTPException(
+            status_code=422,
+            detail="NOT_A_FISH: The uploaded image does not appear to contain a fish.",
+        )
+
+    input_tensor = stream_a_transforms(img_pil).unsqueeze(0).to(device)
+
+    # Hook storage
+    activations: list = []
+    gradients:   list = []
+
+    def _fwd_hook(_module, _inp, out):
+        activations.append(out.detach())
+
+    def _bwd_hook(_module, _grad_in, grad_out):
+        gradients.append(grad_out[0].detach())
+
+    # Target: last conv layer of MobileNetV2 features block
+    target_layer = stream_a_model.features[-1][0]
+    h_fwd = target_layer.register_forward_hook(_fwd_hook)
+    h_bwd = target_layer.register_full_backward_hook(_bwd_hook)
+
+    try:
+        stream_a_model.eval()
+        output = stream_a_model(input_tensor)
+        pred_class = int(output.argmax(dim=1).item())
+
+        stream_a_model.zero_grad()
+        output[0, pred_class].backward()
+    finally:
+        h_fwd.remove()
+        h_bwd.remove()
+
+    # Compute CAM
+    grads = gradients[0].squeeze().cpu().numpy()   # (C, H, W)
+    acts  = activations[0].squeeze().cpu().numpy()  # (C, H, W)
+
+    if grads.ndim == 3:
+        weights = grads.mean(axis=(1, 2))           # (C,)
+        cam = np.einsum("c,chw->hw", weights, acts)
+    else:
+        cam = grads  # fallback for edge-case shapes
+
+    cam = np.maximum(cam, 0)
+    cam_min, cam_max = cam.min(), cam.max()
+    if cam_max > cam_min:
+        cam = (cam - cam_min) / (cam_max - cam_min)
+
+    # Resize to original image dimensions
+    w, h = img_pil.size
+    cam_img  = Image.fromarray((cam * 255).astype(np.uint8)).resize((w, h), Image.BILINEAR)
+    cam_arr  = np.array(cam_img, dtype=np.float32) / 255.0  # [0,1]
+
+    # Jet-like colormap
+    r = np.clip(1.5 - abs(cam_arr * 4.0 - 3.0), 0, 1)
+    g = np.clip(1.5 - abs(cam_arr * 4.0 - 2.0), 0, 1)
+    b = np.clip(1.5 - abs(cam_arr * 4.0 - 1.0), 0, 1)
+
+    heatmap = np.stack([r, g, b], axis=2)
+    heat_uint8 = (heatmap * 255).astype(np.uint8)
+    heat_img   = Image.fromarray(heat_uint8, "RGB")
+
+    orig_arr   = np.array(img_pil.resize((w, h)), dtype=np.float32)
+    heat_arr   = np.array(heat_img,               dtype=np.float32)
+    blended    = np.clip(0.55 * orig_arr + 0.45 * heat_arr, 0, 255).astype(np.uint8)
+
+    overlay_pil = Image.fromarray(blended)
+    buf = io.BytesIO()
+    overlay_pil.save(buf, format="JPEG", quality=88)
+    overlay_b64 = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+
+    return {
+        "gradcam_image":   overlay_b64,
+        "predicted_class": CLASS_NAMES[pred_class],
+        "class_index":     pred_class,
+        "mode":            "real",
+    }

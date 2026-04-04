@@ -7,10 +7,10 @@ import { api } from '../lib/api';
 import type { HistoryScan, HistoryStats } from '../lib/types';
 
 export default function ResultsPage() {
-  const [scans, setScans]   = useState<HistoryScan[]>([]);
-  const [stats, setStats]   = useState<HistoryStats | null>(null);
+  const [scans, setScans] = useState<HistoryScan[]>([]);
+  const [stats, setStats] = useState<HistoryStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -53,9 +53,9 @@ export default function ResultsPage() {
     );
   }
 
-  const totalScans  = stats?.total_scans         ?? scans.length;
-  const avgScore    = stats?.avg_freshness_index  ?? 0;
-  const freshRate   = stats?.fresh_rate_percent   ?? 0;
+  const totalScans = stats?.total_scans ?? scans.length;
+  const avgScore = stats?.avg_freshness_index ?? 0;
+  const freshRate = stats?.fresh_rate_percent ?? 0;
 
   return (
     <div className="min-h-[calc(100vh-4rem)] px-6 md:px-16 lg:px-24 py-8 md:py-12">

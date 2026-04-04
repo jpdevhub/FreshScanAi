@@ -19,10 +19,12 @@ export function getToken(): string | null {
 
 export function setToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token);
+  window.dispatchEvent(new Event('auth-change'));
 }
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+  window.dispatchEvent(new Event('auth-change'));
 }
 
 export function isAuthenticated(): boolean {
@@ -73,6 +75,13 @@ export interface MarketsResponse {
   markets: Market[];
 }
 
+export interface GradcamResponse {
+  gradcam_image: string;   // base64 data-URI
+  predicted_class: string;
+  class_index: number;   // 0 | 1 | 2
+  mode: 'real' | 'demo';
+}
+
 // ── API surface ───────────────────────────────────────────────────────────────
 
 export const api = {
@@ -109,6 +118,25 @@ export const api = {
 
   getScanHistory: (limit = 20, offset = 0): Promise<HistoryResponse> =>
     apiFetch<HistoryResponse>(`/api/v1/scans/history?limit=${limit}&offset=${offset}`),
+
+  // Grad-CAM
+  getGradcam: async (blob: Blob): Promise<GradcamResponse> => {
+    const form = new FormData();
+    form.append('image', blob, 'gradcam_input.jpg');
+
+    const res = await fetch(`${API_BASE}/api/v1/gradcam`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: form,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error((err as { detail?: string }).detail || `HTTP ${res.status}`);
+    }
+
+    return res.json() as Promise<GradcamResponse>;
+  },
 
   // Map
   getMarkets: (): Promise<MarketsResponse> =>

@@ -1,11 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ScanLine, Map, BarChart3, User } from 'lucide-react';
+import { ScanLine, Map, Layers } from 'lucide-react';
 
 const navItems = [
   { to: '/scanner', icon: ScanLine, label: 'SCANNER' },
   { to: '/map', icon: Map, label: 'MAP' },
-  { to: '/results', icon: BarChart3, label: 'RESULTS' },
-  { to: '/auth', icon: User, label: 'PROFILE' },
+  { to: '/mode', icon: Layers, label: 'MODE' },
 ];
 
 export default function BottomNav() {
@@ -20,9 +19,8 @@ export default function BottomNav() {
             <Link
               key={to}
               to={to}
-              className={`flex flex-col items-center gap-1 no-underline transition-colors duration-200 ${
-                isActive ? 'text-neon' : 'text-on-surface-variant'
-              }`}
+              className={`flex flex-col items-center gap-1 no-underline transition-colors duration-200 ${isActive ? 'text-neon' : 'text-on-surface-variant'
+                }`}
             >
               <Icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
               <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest">

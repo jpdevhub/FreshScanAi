@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
+import { isAuthenticated } from '../lib/api';
 import { Zap, Eye, MapPin, ScanLine, Target, Award, ChevronDown } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
-import StatusTerminal from '../components/StatusTerminal';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const features = [
   {
@@ -64,35 +64,35 @@ const faqs = [
 
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [loggedIn, setLoggedIn] = useState(isAuthenticated());
+
+  useEffect(() => {
+    const handleAuthChange = () => setLoggedIn(isAuthenticated());
+    window.addEventListener('auth-change', handleAuthChange);
+    return () => window.removeEventListener('auth-change', handleAuthChange);
+  }, []);
 
   return (
     <div className="relative">
       {/* ── HERO ── */}
-      <section className="relative min-h-[90vh] flex flex-col justify-center px-6 md:px-16 lg:px-24 py-20 overflow-hidden">
+      <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-6 md:px-16 lg:px-24 py-20 overflow-hidden text-center">
         {/* Background accent line */}
         <div className="absolute left-0 top-0 w-1 h-full bg-neon/20" />
 
-        <div className="relative z-10 max-w-5xl">
-          <StatusTerminal
-            messages={['PROTOCOL: ACTIVE', 'MODEL: v4.2.1', 'ENV: PRODUCTION']}
-            className="mb-8"
-          />
-
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold leading-[0.9] tracking-tighter mb-6">
+        <div className="relative z-10 max-w-5xl mx-auto">
+          <h1 className="font-headline text-[3.5rem] md:text-[5rem] lg:text-[7rem] leading-[1.05] font-extrabold tracking-tighter text-white mb-8">
             Fish Freshness
             <br />
-            <span className="text-neon">Objectively</span>
-            <br />
-            Graded
+            <span className="text-neon italic block mt-2 md:mt-3">*Objectively Graded*</span>
           </h1>
 
-          <p className="text-on-surface-variant text-base md:text-lg max-w-xl leading-relaxed mb-10 font-[family-name:var(--font-body)]">
+          <p className="text-on-surface-variant text-base md:text-lg max-w-xl leading-relaxed mb-10 font-[family-name:var(--font-body)] mx-auto">
             Academic-grade AI vision engineered for real-time biomarker analysis
             in high-humidity environments.
           </p>
 
           {/* Stat Pills */}
-          <div className="flex flex-wrap gap-4 mb-12">
+          <div className="flex flex-wrap justify-center gap-4 mb-12">
             <GlassCard className="px-6 py-4" variant="glass">
               <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-on-surface-variant uppercase block mb-1">
                 Inference Speed
@@ -112,20 +112,22 @@ export default function LandingPage() {
           </div>
 
           {/* CTA Buttons */}
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap justify-center gap-4">
             <Link
-              to="/scanner"
+              to="/mode"
               className="bg-neon text-on-primary px-8 py-4 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider no-underline transition-all duration-200 hover:bg-neon-dim pulse-glow inline-flex items-center gap-3"
             >
               <ScanLine size={18} />
               BEGIN_ASSESSMENT
             </Link>
-            <Link
-              to="/auth"
-              className="bg-transparent text-neon px-8 py-4 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider no-underline ghost-border transition-all duration-200 hover:bg-surface-high inline-flex items-center gap-3"
-            >
-              INITIALIZE_SESSION
-            </Link>
+            {!loggedIn && (
+              <Link
+                to="/auth"
+                className="hidden md:inline-flex bg-transparent text-neon px-8 py-4 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider no-underline ghost-border transition-all duration-200 hover:bg-surface-high items-center gap-3"
+              >
+                INITIALIZE_SESSION
+              </Link>
+            )}
           </div>
         </div>
       </section>
@@ -237,9 +239,8 @@ export default function LandingPage() {
                   </h4>
                   <ChevronDown
                     size={18}
-                    className={`text-neon shrink-0 transition-transform duration-200 ${
-                      openFaq === i ? 'rotate-180' : ''
-                    }`}
+                    className={`text-neon shrink-0 transition-transform duration-200 ${openFaq === i ? 'rotate-180' : ''
+                      }`}
                   />
                 </div>
                 {openFaq === i && (

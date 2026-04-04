@@ -185,7 +185,7 @@ def test_public_vendors():
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print(_color(33, "\n  🐟  FreshScan AI — Auth Integration Test Suite"))
+    print(_color(33, "\n FreshScan AI — Auth Integration Test Suite"))
     print(_color(33, f"  Server: {BASE_URL}\n"))
 
     # Resolve token
