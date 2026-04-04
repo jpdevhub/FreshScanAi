@@ -1,0 +1,17 @@
+{
+  "name": "FreshScan AI",
+  "short_name": "FreshScan",
+  "description": "Edge-AI fish freshness assessment using real-time biomarker analysis",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#131313",
+  "theme_color": "#131313",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
