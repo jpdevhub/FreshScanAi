@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently --names \"UI,API\" --prefix-colors \"green,cyan\" \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "vite",
-    "dev:backend": "sh scripts/start-backend.sh",
+    "dev:backend": "node -e \"const {execSync}=require('child_process');const cmd=process.platform==='win32'?'scripts\\\\start-backend.bat':'sh scripts/start-backend.sh';execSync(cmd,{stdio:'inherit',shell:true})\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -29,6 +29,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
