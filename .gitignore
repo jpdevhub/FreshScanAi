@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+
+# Model weights (too large for git)
+*.pth
+*.onnx
+*.bin
+
+# HuggingFace cache
+.cache/
+
+# Temp test outputs
+out.txt
+
+# Virtual environments
+venv/
+env/
+.venv/
