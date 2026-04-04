@@ -1,0 +1,82 @@
+[
+  {
+    "name": "Howrah Fish Market",
+    "address": "Howrah, West Bengal",
+    "lat": 22.5958,
+    "lng": 88.3099,
+    "trust_score": 88.0,
+    "avg_freshness_score": 88,
+    "vendor_count": 47,
+    "total_scans": 342
+  },
+  {
+    "name": "Gariahat Market",
+    "address": "Gariahat, Kolkata",
+    "lat": 22.5196,
+    "lng": 88.3653,
+    "trust_score": 94.0,
+    "avg_freshness_score": 94,
+    "vendor_count": 31,
+    "total_scans": 289
+  },
+  {
+    "name": "New Market Fish Hall",
+    "address": "New Market, Kolkata",
+    "lat": 22.5654,
+    "lng": 88.3499,
+    "trust_score": 61.0,
+    "avg_freshness_score": 61,
+    "vendor_count": 24,
+    "total_scans": 156
+  },
+  {
+    "name": "Lake Market",
+    "address": "Rashbehari, Kolkata",
+    "lat": 22.5151,
+    "lng": 88.3469,
+    "trust_score": 78.0,
+    "avg_freshness_score": 78,
+    "vendor_count": 19,
+    "total_scans": 198
+  },
+  {
+    "name": "Maniktala Bazaar",
+    "address": "Maniktala, Kolkata",
+    "lat": 22.5807,
+    "lng": 88.3793,
+    "trust_score": 72.0,
+    "avg_freshness_score": 72,
+    "vendor_count": 28,
+    "total_scans": 211
+  },
+  {
+    "name": "Shyambazar Fish Market",
+    "address": "Shyambazar, Kolkata",
+    "lat": 22.5953,
+    "lng": 88.3720,
+    "trust_score": 82.0,
+    "avg_freshness_score": 82,
+    "vendor_count": 22,
+    "total_scans": 167
+  },
+  {
+    "name": "Jorabagan Market",
+    "address": "Jorabagan, Kolkata",
+    "lat": 22.5843,
+    "lng": 88.3594,
+    "trust_score": 65.0,
+    "avg_freshness_score": 65,
+    "vendor_count": 15,
+    "total_scans": 113
+  },
+  {
+    "name": "Jadavpur Fish Market",
+    "address": "Jadavpur, Kolkata",
+    "lat": 22.4981,
+    "lng": 88.3706,
+    "trust_score": 91.0,
+    "avg_freshness_score": 91,
+    "vendor_count": 36,
+    "total_scans": 248
+  }
+]

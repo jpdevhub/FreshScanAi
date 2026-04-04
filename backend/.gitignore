@@ -1,17 +1,29 @@
-# Python
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Environment variables
 .env
-
-# HuggingFace cache
-.cache/
-
-# Temp test outputs
-out.txt
+.env.*
 
 # Virtual environments
 venv/
 env/
 .venv/
+
+# ML model weights
+*.pth
+*.pt
+*.onnx
+*.bin
+models/
+Models/
+
+# HuggingFace / torch cache
+.cache/
+
+# Temp / test outputs
+out.txt
+*.log

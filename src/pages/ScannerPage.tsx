@@ -1,91 +1,185 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { Camera, Zap, RotateCcw, FlashlightOff, Flashlight, SwitchCamera } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Camera, Zap, RotateCcw, FlashlightOff, Flashlight, SwitchCamera, Upload } from 'lucide-react';
 import StatusTerminal from '../components/StatusTerminal';
+import { api, isAuthenticated } from '../lib/api';
 
 export default function ScannerPage() {
-  const [progress, setProgress] = useState(0);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanComplete, setScanComplete] = useState(false);
-  const [flashOn, setFlashOn] = useState(false);
-  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const navigate = useNavigate();
 
+  const [scanPhase, setScanPhase] = useState<'idle' | 'capturing' | 'processing' | 'done' | 'error'>('idle');
+  const [progress, setProgress]   = useState(0);
+  const [freshness, setFreshness] = useState<number | null>(null);
+  const [error, setError]         = useState('');
+  const [flashOn, setFlashOn]     = useState(false);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  // Preview for uploaded photo
+  const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
+
+  const videoRef      = useRef<HTMLVideoElement>(null);
+  const progressRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fileInputRef  = useRef<HTMLInputElement>(null);
+
+  // ── Camera stream ──────────────────────────────────────────────────────────
   useEffect(() => {
-    let currentStream: MediaStream | null = null;
-    
+    // Don't start camera if we're showing an uploaded image preview
+    if (uploadPreviewUrl) return;
+
+    let stream: MediaStream | null = null;
+    let cancelled = false;
+
     async function startCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode }
-        });
-        currentStream = stream;
-        if (videoRef.current) {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+        if (!cancelled && videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(console.error);
         }
       } catch (err) {
-        console.error("Error accessing camera:", err);
+        if (!cancelled) console.error('Camera error:', err);
       }
     }
 
     startCamera();
-
     return () => {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
+      cancelled = true;
+      stream?.getTracks().forEach(t => t.stop());
+      if (videoRef.current) videoRef.current.srcObject = null;
     };
-  }, [facingMode]);
+  }, [facingMode, uploadPreviewUrl]);
 
-  const toggleCamera = useCallback(() => {
-    setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
-  }, []);
-
-  const startScan = useCallback(() => {
-    setIsScanning(true);
-    setScanComplete(false);
+  // ── Progress bar ───────────────────────────────────────────────────────────
+  const startProgressBar = useCallback(() => {
     setProgress(0);
+    progressRef.current = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + Math.random() * 4 + 1;
+      });
+    }, 100);
   }, []);
+
+  const stopProgressBar = useCallback((final: number) => {
+    if (progressRef.current) clearInterval(progressRef.current);
+    setProgress(final);
+  }, []);
+
+  // ── Shared: submit blob to API then navigate ───────────────────────────────
+  const submitAndNavigate = useCallback(async (blob: Blob) => {
+    setScanPhase('processing');
+    startProgressBar();
+
+    try {
+      const result = await api.submitScan(blob);
+      stopProgressBar(100);
+      sessionStorage.setItem('lastScanId', result.scan.scan_id);
+      setFreshness(result.scan.freshness_index);
+      setScanPhase('done');
+      // Auto-navigate to analysis after a short "done" flash
+      setTimeout(() => navigate('/analysis'), 1200);
+    } catch (err) {
+      stopProgressBar(0);
+      const msg = err instanceof Error ? err.message : 'Scan failed.';
+      setError(msg);
+      setScanPhase('error');
+    }
+  }, [startProgressBar, stopProgressBar, navigate]);
+
+  // ── Camera scan ────────────────────────────────────────────────────────────
+  const captureFrame = useCallback((): Promise<Blob | null> => {
+    return new Promise(resolve => {
+      const video = videoRef.current;
+      if (!video) return resolve(null);
+      const canvas = document.createElement('canvas');
+      canvas.width  = video.videoWidth  || 640;
+      canvas.height = video.videoHeight || 480;
+      canvas.getContext('2d')?.drawImage(video, 0, 0);
+      canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.92);
+    });
+  }, []);
+
+  const startScan = useCallback(async () => {
+    if (!isAuthenticated()) { navigate('/auth'); return; }
+    setScanPhase('capturing');
+    setError('');
+
+    const blob = await captureFrame();
+    if (!blob) {
+      setError('Failed to capture camera frame.');
+      setScanPhase('error');
+      return;
+    }
+    await submitAndNavigate(blob);
+  }, [captureFrame, submitAndNavigate, navigate]);
+
+  // ── Photo upload ───────────────────────────────────────────────────────────
+  const handleUploadClick = useCallback(() => {
+    if (!isAuthenticated()) { navigate('/auth'); return; }
+    fileInputRef.current?.click();
+  }, [navigate]);
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Show preview & stop camera
+    const url = URL.createObjectURL(file);
+    setUploadPreviewUrl(url);
+    setError('');
+
+    await submitAndNavigate(file);
+
+    // Cleanup object URL after use
+    URL.revokeObjectURL(url);
+  }, [submitAndNavigate]);
 
   const resetScan = useCallback(() => {
-    setIsScanning(false);
-    setScanComplete(false);
+    setScanPhase('idle');
     setProgress(0);
+    setFreshness(null);
+    setError('');
+    setUploadPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
-  useEffect(() => {
-    if (!isScanning || scanComplete) return;
+  const toggleCamera = useCallback(() => {
+    setFacingMode(prev => (prev === 'environment' ? 'user' : 'environment'));
+  }, []);
 
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsScanning(false);
-          setScanComplete(true);
-          return 100;
-        }
-        return prev + Math.random() * 3 + 1;
-      });
-    }, 80);
+  const isScanning   = scanPhase === 'capturing' || scanPhase === 'processing';
+  const scanComplete = scanPhase === 'done';
 
-    return () => clearInterval(interval);
-  }, [isScanning, scanComplete]);
+  const terminalMessages = (() => {
+    if (scanPhase === 'capturing')  return ['SCAN_SEQ: ACTIVE', 'CAPTURING_FRAME'];
+    if (scanPhase === 'processing') return ['SCAN_SEQ: ACTIVE', `PROGRESS: ${Math.min(Math.round(progress), 100)}%`];
+    if (scanComplete)               return ['SCAN_SEQ: COMPLETE', `FRESHNESS: ${freshness}`];
+    if (scanPhase === 'error')      return ['SCAN_SEQ: FAILED', 'CHECK_SPECIMEN'];
+    return ['SCAN_SEQ: STANDBY', 'AWAITING_INPUT'];
+  })();
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col">
-      {/* Scanner Viewport */}
       <div className="relative flex-1 flex flex-col">
-        {/* Camera View Area */}
+
+        {/* Camera / Upload preview viewport */}
         <div className="relative flex-1 bg-surface-lowest flex items-center justify-center min-h-[60vh] overflow-hidden">
-          {/* Live Camera Feed */}
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className={`absolute inset-0 w-full h-full object-cover z-0 ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
-          />
+
+          {uploadPreviewUrl ? (
+            /* Uploaded image preview */
+            <img
+              src={uploadPreviewUrl}
+              alt="Upload preview"
+              className="absolute inset-0 w-full h-full object-contain z-0 bg-surface-lowest"
+            />
+          ) : (
+            /* Live camera feed */
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`absolute inset-0 w-full h-full object-cover z-0 ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+            />
+          )}
 
           {/* Grid overlay */}
           <div
@@ -106,16 +200,14 @@ export default function ScannerPage() {
             <div className="viewfinder-corner bottom-left" />
             <div className="viewfinder-corner bottom-right" />
 
-            {/* Scan line */}
             {isScanning && (
               <div className="absolute inset-x-0 overflow-hidden h-full">
                 <div className="scan-line w-full h-0.5 bg-gradient-to-r from-transparent via-neon to-transparent" />
               </div>
             )}
 
-            {/* Center content */}
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-              {!isScanning && !scanComplete && (
+              {scanPhase === 'idle' && !uploadPreviewUrl && (
                 <>
                   <Camera size={32} className="text-on-surface-variant" />
                   <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-on-surface-variant">
@@ -123,49 +215,53 @@ export default function ScannerPage() {
                   </span>
                 </>
               )}
+              {scanPhase === 'idle' && uploadPreviewUrl && (
+                <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-neon">
+                  IMAGE_LOADED
+                </span>
+              )}
               {isScanning && (
                 <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-neon data-stream">
                   ANALYZING_BIOMARKERS
                 </span>
               )}
-              {scanComplete && (
+              {scanComplete && freshness !== null && (
                 <div className="text-center animate-in">
                   <span className="font-[family-name:var(--font-display)] text-5xl font-bold text-neon block">
-                    87
+                    {freshness}
                   </span>
                   <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-secondary">
                     FRESHNESS_INDEX
                   </span>
                 </div>
               )}
+              {scanPhase === 'error' && (
+                <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-error text-center px-4">
+                  {error || 'SCAN_FAILED'}
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Top-left Status */}
+          {/* Status top-left */}
           <div className="absolute top-4 left-4 z-20 pointer-events-none">
-            <StatusTerminal
-              messages={
-                isScanning
-                  ? ['SCAN_SEQ: ACTIVE', `PROGRESS: ${Math.min(Math.round(progress), 100)}%`]
-                  : scanComplete
-                    ? ['SCAN_SEQ: COMPLETE', 'GRADE: A']
-                    : ['SCAN_SEQ: STANDBY', 'AWAITING_INPUT']
-              }
-            />
+            <StatusTerminal messages={terminalMessages} />
           </div>
 
-          {/* Top-right controls */}
-          <div className="absolute top-4 right-4 flex gap-2 z-20">
-            <button
-              onClick={() => setFlashOn(!flashOn)}
-              className="w-10 h-10 bg-surface-mid/80 flex items-center justify-center text-on-surface-variant hover:text-neon transition-colors cursor-pointer border-none"
-            >
-              {flashOn ? <Flashlight size={16} /> : <FlashlightOff size={16} />}
-            </button>
-          </div>
+          {/* Camera controls top-right — hide when showing upload preview */}
+          {!uploadPreviewUrl && (
+            <div className="absolute top-4 right-4 flex gap-2 z-20">
+              <button
+                onClick={() => setFlashOn(!flashOn)}
+                className="w-10 h-10 bg-surface-mid/80 flex items-center justify-center text-on-surface-variant hover:text-neon transition-colors cursor-pointer border-none"
+              >
+                {flashOn ? <Flashlight size={16} /> : <FlashlightOff size={16} />}
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress bar */}
         <div className="h-1 bg-surface-low">
           <div
             className="h-full bg-neon transition-all duration-100 ease-out"
@@ -173,19 +269,20 @@ export default function ScannerPage() {
           />
         </div>
 
-        {/* Controls Panel */}
+        {/* Controls panel */}
         <div className="bg-surface-low px-6 py-6">
           <div className="max-w-lg mx-auto">
-            {/* Main Action */}
-            <div className="flex items-center justify-center gap-4 mb-4">
-              {!scanComplete ? (
-                <div className="flex gap-3 w-full">
+
+            {!scanComplete ? (
+              <div className="flex flex-col gap-3 mb-4">
+                {/* Row 1: INITIATE_SCAN + camera toggle */}
+                <div className="flex gap-3">
                   <button
                     onClick={startScan}
-                    disabled={isScanning}
+                    disabled={isScanning || !!uploadPreviewUrl}
                     className={`flex-1 py-4 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer transition-all duration-200 border-none flex items-center justify-center gap-3 ${
-                      isScanning
-                        ? 'bg-surface-high text-on-surface-variant cursor-not-allowed'
+                      isScanning || uploadPreviewUrl
+                        ? 'bg-surface-high text-on-surface-variant cursor-not-allowed opacity-50'
                         : 'bg-neon text-on-primary hover:bg-neon-dim pulse-glow'
                     }`}
                   >
@@ -194,34 +291,56 @@ export default function ScannerPage() {
                   </button>
                   <button
                     onClick={toggleCamera}
-                    disabled={isScanning}
+                    disabled={isScanning || !!uploadPreviewUrl}
                     className="w-14 bg-surface-high flex items-center justify-center text-on-surface-variant hover:text-neon transition-colors cursor-pointer border-none disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Switch Camera"
                   >
                     <SwitchCamera size={18} />
                   </button>
                 </div>
-              ) : (
-                <div className="flex gap-3 w-full">
-                  <Link
-                    to="/analysis"
-                    className="flex-1 bg-neon text-on-primary py-4 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider no-underline text-center transition-all duration-200 hover:bg-neon-dim"
-                  >
-                    VIEW_ANALYSIS
-                  </Link>
-                  <button
-                    onClick={resetScan}
-                    className="w-14 bg-surface-high flex items-center justify-center text-on-surface-variant hover:text-neon transition-colors cursor-pointer border-none"
-                  >
-                    <RotateCcw size={18} />
-                  </button>
-                </div>
-              )}
-            </div>
 
-            {/* Status Footer */}
+                {/* Row 2: UPLOAD_PHOTO */}
+                <button
+                  onClick={handleUploadClick}
+                  disabled={isScanning}
+                  className={`w-full py-3 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer transition-all duration-200 border border-on-surface-variant/30 flex items-center justify-center gap-3 ${
+                    isScanning
+                      ? 'bg-surface-mid text-on-surface-variant cursor-not-allowed opacity-50'
+                      : 'bg-surface-mid text-on-surface hover:border-neon hover:text-neon'
+                  }`}
+                >
+                  <Upload size={16} />
+                  UPLOAD_PHOTO
+                </button>
+
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </div>
+            ) : (
+              <div className="flex gap-3 w-full mb-4">
+                <button
+                  onClick={() => navigate('/analysis')}
+                  className="flex-1 bg-neon text-on-primary py-4 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider text-center transition-all duration-200 hover:bg-neon-dim border-none cursor-pointer"
+                >
+                  VIEW_ANALYSIS
+                </button>
+                <button
+                  onClick={resetScan}
+                  className="w-14 bg-surface-high flex items-center justify-center text-on-surface-variant hover:text-neon transition-colors cursor-pointer border-none"
+                >
+                  <RotateCcw size={18} />
+                </button>
+              </div>
+            )}
+
             <StatusTerminal
-              messages={['MODEL: TFLite_v4.2', 'DEVICE: ON_EDGE', 'LATENCY: 47ms']}
+              messages={['MODEL: STREAM_DUAL', 'DEVICE: ON_EDGE', 'LATENCY: <50ms']}
               className="justify-center"
             />
           </div>

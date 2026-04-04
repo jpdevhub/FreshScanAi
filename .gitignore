@@ -7,16 +7,40 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Build output
 dist
 dist-ssr
-*.local
 
-# Environment variables
+# Environment variables — never commit secrets
 .env
 .env.*
+backend/.env
+backend/.env.*
+
+# Python virtual environment
+.venv
+backend/.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
+
+# Vite internals
+.vite
+
+# ML model weights — large binary files
+*.pth
+*.pt
+*.onnx
+*.bin
+Models/
 
 # Editor directories and files
+*.local
 .vscode/*
 !.vscode/extensions.json
 .idea
