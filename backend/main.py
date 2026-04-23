@@ -33,11 +33,14 @@ from auth import get_current_user, get_google_oauth_url, exchange_code_for_sessi
 
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-SUPABASE_URL         = os.environ.get("SUPABASE_URL", "https://mjklfhjnebidbsizulgr.supabase.co")
+# All secrets MUST come from environment variables — no hardcoded fallbacks.
+SUPABASE_URL         = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY         = os.environ.get("SUPABASE_KEY", "")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 API_BASE_URL         = os.environ.get("API_BASE_URL", "http://localhost:8000")
 FRONTEND_URL         = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+# CORS_ALLOW_ALL=true → open (local dev). Unset or false → locked to FRONTEND_URL (production).
+CORS_ALLOW_ALL       = os.environ.get("CORS_ALLOW_ALL", "false").lower() == "true"
 
 # Model paths — resolve relative to repo root, fully overridable via env vars
 _repo_root    = Path(__file__).parent.parent
@@ -88,9 +91,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="FreshScan AI", version="1.0.0", lifespan=lifespan)
 
+_cors_origins = ["*"] if CORS_ALLOW_ALL else [
+    FRONTEND_URL,
+    # Always allow Vercel preview deployments
+    "https://fresh-scan-ai-sage.vercel.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
