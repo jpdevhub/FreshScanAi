@@ -89,7 +89,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="FreshScan AI", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="FreshScan AI", version="1.1.0", lifespan=lifespan)
 
 _cors_origins = ["*"] if CORS_ALLOW_ALL else [
     FRONTEND_URL,
