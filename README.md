@@ -9,17 +9,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/gloooomed/FreshScan/issues/new?labels=bug">Report Bug</a>
+  <a href="https://github.com/jpdevhub/FreshScanAi/issues/new?labels=bug">Report Bug</a>
   ·
-  <a href="https://github.com/gloooomed/FreshScan/issues/new?labels=enhancement">Request Feature</a>
+  <a href="https://github.com/jpdevhub/FreshScanAi/issues/new?labels=enhancement">Request Feature</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/gloooomed/FreshScan/stargazers">
-    <img src="https://img.shields.io/github/stars/gloooomed/FreshScan?style=for-the-badge&labelColor=1a1a2e&color=4f8ef7&label=STARS" alt="Stars" />
+  <a href="https://github.com/jpdevhub/FreshScanAi/stargazers">
+    <img src="https://img.shields.io/github/stars/jpdevhub/FreshScanAi?style=for-the-badge&labelColor=1a1a2e&color=4f8ef7&label=STARS" alt="Stars" />
   </a>
-  <a href="https://github.com/gloooomed/FreshScan/forks">
-    <img src="https://img.shields.io/github/forks/gloooomed/FreshScan?style=for-the-badge&labelColor=1a1a2e&color=4f8ef7&label=FORKS" alt="Forks" />
+  <a href="https://github.com/jpdevhub/FreshScanAi/forks">
+    <img src="https://img.shields.io/github/forks/jpdevhub/FreshScanAi?style=for-the-badge&labelColor=1a1a2e&color=4f8ef7&label=FORKS" alt="Forks" />
   </a>
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/LICENSE-MIT-brightgreen?style=for-the-badge&labelColor=1a1a2e" alt="License" />
@@ -53,8 +53,8 @@
 ### Fast path (2 commands)
 
 ```bash
-git clone https://github.com/gloooomed/FreshScan.git
-cd FreshScan
+git clone https://github.com/jpdevhub/FreshScanAi.git
+cd FreshScanAi
 npm run setup   # installs everything, writes .env, optionally starts local Supabase
 npm run dev
 ```
