@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import StatusTerminal from '../components/StatusTerminal';
 import { api, setToken, isAuthenticated } from '../lib/api';
 
+// Bypass token must match DEV_BYPASS_TOKEN in backend/.env
+const DEV_BYPASS_TOKEN = 'dev-local-bypass-token';
+const IS_DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
+
 export default function AuthPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'idle' | 'processing' | 'error'>('idle');
@@ -38,6 +42,12 @@ export default function AuthPage() {
 
   const handleGoogleLogin = () => {
     window.location.href = api.loginUrl();
+  };
+
+  /** Dev-only: skip OAuth entirely, store the bypass token, go straight to /mode */
+  const handleDevLogin = () => {
+    setToken(DEV_BYPASS_TOKEN);
+    navigate('/mode', { replace: true });
   };
 
   const terminalMessages = (() => {
@@ -95,6 +105,19 @@ export default function AuthPage() {
             </svg>
             {status === 'processing' ? 'AUTHENTICATING...' : 'CONTINUE_WITH_GOOGLE'}
           </button>
+
+          {/* DEV ONLY — shown only when VITE_DEV_MODE=true in .env.local */}
+          {IS_DEV_MODE && (
+            <button
+              type="button"
+              onClick={handleDevLogin}
+              className="w-full border border-dashed border-yellow-500/50 bg-yellow-500/5 text-yellow-400 py-4 font-[family-name:var(--font-mono)] text-xs tracking-widest cursor-pointer transition-all duration-200 hover:bg-yellow-500/10 hover:border-yellow-400 flex items-center justify-center gap-3"
+            >
+              <span className="text-yellow-500">⚡</span>
+              DEV_LOGIN — BYPASS_OAUTH
+              <span className="text-yellow-500/50 text-[10px]">[local only]</span>
+            </button>
+          )}
         </div>
 
         <div className="mt-12 pt-6 border-t border-outline-variant/15">

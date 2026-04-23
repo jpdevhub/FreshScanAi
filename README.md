@@ -50,17 +50,105 @@
 
 ## Getting Started
 
+### Fast path (2 commands)
+
 ```bash
 git clone https://github.com/gloooomed/FreshScan.git
 cd FreshScan
-npm install
-```
-
-Start both the frontend and backend servers simultaneously:
-
-```bash
+npm run setup   # installs everything, writes .env, optionally starts local Supabase
 npm run dev
 ```
+
+Open **http://localhost:5173** → click **⚡ DEV LOGIN** → you're in.
+
+The `setup` script auto-detects your environment and picks the right DB path:
+
+| Your setup | DB used | Isolation |
+|-----------|---------|-----------|
+| No Docker / no Supabase CLI | Shared dev Supabase (anon key) | Isolated by `user_id` |
+| Docker + Supabase CLI installed | **Fully local Docker Supabase** | Completely isolated |
+
+### Full local Supabase (recommended for contributors)
+
+If you want a completely private database with no shared keys:
+
+```bash
+# Install prerequisites (once)
+brew install supabase/tap/supabase
+# Start Docker Desktop, then:
+
+npm run setup          # starts local Supabase, applies migrations + seed
+npm run dev
+```
+
+The setup script writes `backend/.env` automatically with the local Docker credentials.  
+You can also manage Supabase manually:
+
+```bash
+npm run supabase:start   # start local Supabase containers
+npm run supabase:reset   # wipe + re-apply migrations and seed data
+npm run supabase:stop    # stop containers
+```
+
+Local Supabase Studio (DB admin UI) → http://localhost:54323
+
+### What works out of the box
+
+| Feature | Status |
+|---------|--------|
+| Full UI | `localhost:5173` |
+| Google OAuth | Bypassed — ` DEV LOGIN` button |
+| Fish scanning | Demo mode — random scores, no `.pth` files needed |
+| Grad-CAM heatmap | Synthetic overlay (PIL only) |
+| Scan history / DB | Local Docker **or** shared dev Supabase |
+| Market map | Pre-seeded with 8 Kolkata fish markets |
+| Real ML inference | Optional — uncomment `MODEL_DIR` in `backend/.env` |
+
+---
+
+## Production Deployment
+
+The production stack is:
+
+| Service | Role | URL |
+|---------|------|-----|
+| **Vercel** | React SPA (static) | https://fresh-scan-ai-sage.vercel.app |
+| **Hugging Face Spaces** | FastAPI + PyTorch backend | https://karansingh12-freshscan-api.hf.space |
+| **Supabase** | Auth + database + storage | Your project dashboard |
+
+### Supabase Dashboard (one-time)
+
+Go to **Authentication → URL Configuration** and add:
+
+| Setting | Value |
+|---------|-------|
+| Site URL | `https://fresh-scan-ai-sage.vercel.app` |
+| Redirect URLs | `http://localhost:5173/**` |
+| | `https://fresh-scan-ai-sage.vercel.app/**` |
+
+### Vercel — Environment Variables
+
+Add in **Project → Settings → Environment Variables**:
+
+| Variable | Value |
+|----------|-------|
+| `VITE_API_URL` | `https://karansingh12-freshscan-api.hf.space` |
+
+### Hugging Face Space — Repository Secrets
+
+Add in **Space → Settings → Repository secrets**:
+
+| Secret | Value |
+|--------|-------|
+| `SUPABASE_URL` | Your Supabase project URL |
+| `SUPABASE_KEY` | Anon/public key |
+| `SUPABASE_SERVICE_KEY` | Service role key |
+| `FRONTEND_URL` | `https://fresh-scan-ai-sage.vercel.app` |
+| `API_BASE_URL` | `https://karansingh12-freshscan-api.hf.space` |
+| `HF_MODEL_REPO` | `karansingh12/freshscan-models` |
+| `MODEL_TOKEN` | Your HF token (repo is private) |
+
+The Space uses `Dockerfile` + `startup.sh` — models are downloaded from HF Hub automatically at container start.
 
 ---
 
