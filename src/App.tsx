@@ -9,7 +9,7 @@ import AnalysisDashboard from './pages/AnalysisDashboard';
 import MarketMapPage from './pages/MarketMapPage';
 import ResultsPage from './pages/ResultsPage';
 import PostHogPageView from './components/PostHogPageView';
-import NotFound from './pages/NotFound'; // Importing the new 404 component
+import NotFound from './pages/NotFound';
 
 export default function App() {
   return (

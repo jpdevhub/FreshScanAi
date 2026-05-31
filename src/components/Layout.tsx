@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import BottomNav from './BottomNav';
 import Footer from './Footer';
+import { toggleTheme } from '../lib/theme';
 
 export default function Layout() {
   return (
