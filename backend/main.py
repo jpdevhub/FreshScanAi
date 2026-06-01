@@ -812,3 +812,7 @@ async def generate_gradcam(
         "class_index":     pred_class,
         "mode":            "real",
     }
+# ── VENDOR TRUST SCORE (Issue #45) ──────────────────────────────────────────
+from vendors import router as vendors_router, register_routes
+register_routes(vendors_router, _db)
+app.include_router(vendors_router)
