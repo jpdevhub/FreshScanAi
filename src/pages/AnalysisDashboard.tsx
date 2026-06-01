@@ -132,14 +132,25 @@ export default function AnalysisDashboard() {
               />
             </div>
 
-            <div className="flex items-center gap-4">
-              <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] text-secondary tracking-widest">
-                CLASSIFICATION: {classification}
-              </span>
-              <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] text-on-surface-variant tracking-widest">
-                CONFIDENCE: {confidence}%
-              </span>
-            </div>
+            <div className="flex items-center gap-4 flex-wrap">
+  <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] text-secondary tracking-widest">
+    CLASSIFICATION: {classification}
+  </span>
+
+  <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] text-on-surface-variant tracking-widest">
+    CONFIDENCE: {confidence}%
+  </span>
+
+  <span
+    className={`px-2 py-1 rounded-md text-xs font-semibold ${
+      confidence < 70
+        ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+        : "bg-green-500/20 text-green-400 border border-green-500/30"
+    }`}
+  >
+    {confidence < 70 ? "Low Confidence" : "High Confidence"}
+  </span>
+</div>
           </GlassCard>
 
           {/* Species panel */}
