@@ -282,3 +282,20 @@ input::placeholder {
 }
 .brutalist-popup .leaflet-popup-content { margin: 0 !important; }
 .custom-leaflet-icon { background: transparent !important; border: none !important; }
+
+:root.light {
+  --bg: #ffffff;
+  --on-surface: #121212;
+  --heading-color: #121212;
+  /* Surface and border tokens for light mode readability */
+  --color-surface: #f7f7f7;
+  --color-surface-lowest: #ffffff;
+  --color-surface-low: #f2f2f2;
+  --color-surface-mid: #e8e8e8;
+  --color-surface-high: #dedede;
+  --color-surface-highest: #d4d4d4;
+  --color-on-surface-variant: #3d3d3d;
+  --color-outline: #6b6b6b;
+  --color-outline-variant: #c9c9c9;
+  --color-tertiary: #121212;
+}

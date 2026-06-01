@@ -94,12 +94,12 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           {/* Theme Toggle Button */}
           <button
+            type="button"
             onClick={toggleTheme}
             className="font-[family-name:var(--font-mono)] text-[10px] tracking-widest text-on-surface-variant hover:text-neon transition-colors duration-200 border border-outline-variant/30 px-3 py-1"
           >
             THEME
           </button>
-
           {loggedIn ? (
             <div className="relative" ref={dropdownRef}>
               <button
