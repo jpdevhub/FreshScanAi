@@ -23,14 +23,13 @@ from PIL import Image
 # Inference/fusion require PyTorch — import lazily so server starts without it
 try:
     from inference import load_models, predict_stream_a, predict_stream_b
-    from fusion import process_and_fuse
+    from backend.fusion import process_and_fuse
     _torch_available = True
 except ModuleNotFoundError:
     _torch_available = False
     print("WARNING: PyTorch not installed. Scan endpoints will return 503.")
 
-from auth import get_current_user, get_google_oauth_url, exchange_code_for_session
-
+from backend.auth import get_current_user, get_google_oauth_url, exchange_code_for_session
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 # All secrets MUST come from environment variables — no hardcoded fallbacks.
@@ -447,7 +446,7 @@ async def scan_auto(
         return {"success": True, "scan": payload}
 
     # ── Real inference path ───────────────────────────────────────────────────
-    from router import classify_image_type, ImageType
+    from backend.router import classify_image_type, ImageType
 
     img        = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     image_type = classify_image_type(img)
@@ -728,7 +727,7 @@ async def generate_gradcam(
     # ── Real Grad-CAM path ──────────────────────────────────────────────────────
     import torch  # noqa: F401
     import numpy as np
-    from inference import stream_a_model, stream_a_transforms, device
+    from backend.inference import stream_a_model, stream_a_transforms, device
     from router import is_valid_fish_image
 
     # Fish validity gate — same gate used by /api/v1/scan-auto
@@ -812,3 +811,8 @@ async def generate_gradcam(
         "class_index":     pred_class,
         "mode":            "real",
     }
+# -- VENDOR TRUST SCORE (Issue #45) -----------------------------------------
+from backend.vendors import router as vendors_router, register_routes
+
+register_routes(vendors_router, _db)
+app.include_router(vendors_router)
