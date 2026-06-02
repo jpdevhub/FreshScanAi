@@ -1,8 +1,6 @@
 import React from "react";
 
-interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {}
-
-export default function Skeleton({ className = "", ...props }: SkeletonProps) {
+export default function Skeleton({ className = "", ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={`animate-pulse bg-surface-mid ${className}`} {...props} />
   );
