@@ -154,6 +154,14 @@ def _body_detail(s: int) -> str:
 
 
 def _derive_grade(score: float) -> str:
+    # 1. Type validation checking: Reject anything that isn't a direct integer or float
+    if not isinstance(score, (int, float)) or isinstance(score, bool):
+        raise ValueError(f"Invalid input type: {type(score)}. Score must be a numeric integer or float.")
+        
+    # 2. Scale boundaries validation: Must reside strictly between 0.0 and 100.0 inclusive
+    if score < 0 or score > 100:
+        raise ValueError(f"Score {score} is out of valid scale range (0.0 - 100.0).")
+
     if score >= 92:
         return "A+"
     if score >= 80:
