@@ -7,6 +7,13 @@ import StatusTerminal from '../components/StatusTerminal';
 import { api } from '../lib/api';
 import type { Market } from '../lib/types';
 
+const TILE_DARK  = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+function getActiveTile() {
+  return document.documentElement.classList.contains('light') ? TILE_LIGHT : TILE_DARK;
+}
+
 function getScoreColor(score: number) {
   return score >= 85 ? 'text-secondary' : score >= 70 ? 'text-neon' : 'text-error';
 }
@@ -37,6 +44,14 @@ export default function MarketMapPage() {
   const [selected, setSelected] = useState<Market | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
+  const [tileUrl, setTileUrl] = useState(getActiveTile);
+
+  // Watch for theme class changes on <html> without depending on custom events
+  useEffect(() => {
+    const observer = new MutationObserver(() => setTileUrl(getActiveTile()));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   const defaultPosition: [number, number] = [22.5726, 88.3639];
 
@@ -81,10 +96,7 @@ export default function MarketMapPage() {
           scrollWheelZoom={true}
           className="w-full h-full z-0"
         >
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            attribution="&copy; CARTO"
-          />
+          <TileLayer url={tileUrl} attribution="&copy; CARTO" />
           {markers.map(m => (
             <Marker
               key={m.id}

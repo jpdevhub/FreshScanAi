@@ -91,12 +91,12 @@ export default function Navbar() {
         </div>
 
         {/* Auth Button & Theme Toggle */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {/* Theme Toggle Button */}
           <button
             type="button"
             onClick={toggleTheme}
-            className="font-[family-name:var(--font-mono)] text-[10px] tracking-widest text-on-surface-variant hover:text-neon transition-colors duration-200 border border-outline-variant/30 px-3 py-1"
+            className="font-[family-name:var(--font-mono)] text-[9px] sm:text-[10px] tracking-widest text-on-surface-variant hover:text-neon transition-colors duration-200 border border-outline-variant/30 px-2 py-1 sm:px-3"
           >
             THEME
           </button>
@@ -104,7 +104,7 @@ export default function Navbar() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-3 bg-surface-low border border-outline-variant/30 text-on-surface px-3 py-1.5 transition-all duration-200 hover:bg-surface-mid ghost-border"
+                className="flex items-center gap-2 sm:gap-3 bg-surface-low border border-outline-variant/30 text-on-surface px-2 py-1 sm:px-3 sm:py-1.5 transition-all duration-200 hover:bg-surface-mid ghost-border"
               >
                 {profile?.avatar_url ? (
                   <img src={profile.avatar_url} referrerPolicy="no-referrer" alt="Profile" className="w-7 h-7 object-cover grayscale-[0.5] contrast-125 border border-neon/30" />
@@ -113,8 +113,8 @@ export default function Navbar() {
                     {profile?.full_name?.charAt(0) || 'U'}
                   </div>
                 )}
-                <span className="text-sm font-[family-name:var(--font-mono)] tracking-wider mr-1 uppercase">
-                  {profile?.full_name ? profile.full_name.split(' ')[0] : 'SESSION'}
+                <span className="text-xs sm:text-sm font-[family-name:var(--font-mono)] tracking-wider mr-1 uppercase truncate max-w-[60px] sm:max-w-[100px] inline-block align-bottom" title={profile?.full_name?.split(' ')[0] || 'DEV'}>
+                  {profile?.full_name ? profile.full_name.split(' ')[0] : 'DEV'}
                 </span>
               </button>
 
