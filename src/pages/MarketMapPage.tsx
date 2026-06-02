@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import GlassCard from '../components/GlassCard';
 import StatusTerminal from '../components/StatusTerminal';
+import Skeleton from '../components/Skeleton';
 import { api } from '../lib/api';
 import type { Market } from '../lib/types';
 
@@ -120,7 +121,7 @@ export default function MarketMapPage() {
         </MapContainer>
       </div>
 
-      {/* Bottom panel */}
+{/* Bottom panel */}
       <div className="bg-surface-low px-6 md:px-16 py-6 z-20">
         {error && (
           <p className="text-error font-[family-name:var(--font-mono)] text-xs tracking-widest text-center mb-4">
@@ -128,7 +129,25 @@ export default function MarketMapPage() {
           </p>
         )}
 
-        {selected ? (
+        {loading ? (
+          /* SKELETON LOADER STATE */
+          <GlassCard className="p-5" variant="tonal">
+            <div className="flex items-start justify-between mb-3">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-2 w-16" />
+              </div>
+              <div className="text-right space-y-2 flex flex-col items-end">
+                <Skeleton className="h-8 w-12" />
+                <Skeleton className="h-2 w-20" />
+              </div>
+            </div>
+            <div className="h-1.5 w-full bg-surface-highest">
+              <Skeleton className="h-full w-full" />
+            </div>
+          </GlassCard>
+        ) : selected ? (
+          /* SELECTED NODE STATE */
           <GlassCard className="p-5 animate-in" variant="tonal">
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -154,9 +173,10 @@ export default function MarketMapPage() {
             </div>
           </GlassCard>
         ) : (
+          /* IDLE/EMPTY STATE */
           <div className="text-center py-4">
             <span className="font-[family-name:var(--font-mono)] text-[0.6875rem] tracking-widest text-on-surface-variant">
-              {loading ? 'DOWNLOADING_NODES...' : 'SELECT_MARKET_NODE'}
+              SELECT_MARKET_NODE
             </span>
           </div>
         )}
