@@ -8,6 +8,7 @@ import ScannerPage from './pages/ScannerPage';
 import AnalysisDashboard from './pages/AnalysisDashboard';
 import MarketMapPage from './pages/MarketMapPage';
 import ResultsPage from './pages/ResultsPage';
+import Leaderboard from './pages/Leaderboard';
 import PostHogPageView from './components/PostHogPageView';
 import NotFound from './pages/NotFound';
 
@@ -16,10 +17,10 @@ export default function App() {
     <BrowserRouter>
       {/* Toast provider for global error notifications */}
       <Toaster position="bottom-right" />
-      
+
       {/* Fires a $pageview event to PostHog on every SPA route change */}
       <PostHogPageView />
-      
+
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<LandingPage />} />
@@ -29,7 +30,8 @@ export default function App() {
           <Route path="/analysis" element={<AnalysisDashboard />} />
           <Route path="/map" element={<MarketMapPage />} />
           <Route path="/results" element={<ResultsPage />} />
-          
+          <Route path="/leaderboard" element={<Leaderboard />} />
+
           {/* Catch-all route for broken links/404s */}
           <Route path="*" element={<NotFound />} />
         </Route>
