@@ -54,9 +54,21 @@
 }
 
 :root.light {
-  --bg: #ffffff;
+  --bg: #f5f5f5;
   --on-surface: #121212;
   --heading-color: #121212;
+  --color-bg-void: #e8e8e8;
+  --color-surface: #f5f5f5;
+  --color-surface-lowest: #ebebeb;
+  --color-surface-low: #e8e8e8;
+  --color-surface-mid: #e0e0e0;
+  --color-surface-high: #d4d4d4;
+  --color-surface-highest: #cacaca;
+  --color-surface-bright: #c2c2c2;
+  --color-on-surface-variant: #3a3d2e;
+  --color-outline: #5c6048;
+  --color-outline-variant: #b0b59a;
+  --color-tertiary: #121212;
 }
 
 /* ── GLOBAL RESET: ZERO RADIUS ── */
