@@ -170,25 +170,3 @@ def test_derive_grade_invalid_types(bad_type):
 
 
 
-# ---------------------------------------------------------------------------
-# main.py — Grade Derivation Logic & Validation Checks
-# ---------------------------------------------------------------------------
-
-
-from unittest.mock import MagicMock
-
-# 1. Trick Python into thinking 'supabase' is already loaded
-mock_supabase = MagicMock()
-sys.modules['supabase'] = mock_supabase
-
-# 2. Trick Python into bypassing 'inference' entirely to avoid the broken PyTorch DLLs
-mock_inference = MagicMock()
-# Provide dummy mock functions so main.py can unpack them during import
-mock_inference.load_models = MagicMock()
-mock_inference.predict_stream_a = MagicMock()
-mock_inference.predict_stream_b = MagicMock()
-sys.modules['inference'] = mock_inference
-
-# Now we can safely import from main in total isolation!
-import pytest
-
