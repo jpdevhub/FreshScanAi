@@ -6,6 +6,10 @@ from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional
+from api.public import router as public_router
+
+app.include_router(public_router, prefix="/public", tags=["public"])
+# Result: GET /public/report/{scan_id} serves the public report endpoint without auth, used by QR code scans and public links.
 
 # Load .env file if present (python-dotenv)
 try:

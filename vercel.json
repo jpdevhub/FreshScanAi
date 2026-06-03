@@ -9,5 +9,6 @@
       "destination": "https://us.i.posthog.com/:path*"
     },
     { "source": "/(.*)", "destination": "/" }
+    { "source": "/report/:id", "destination": "/index.html" }
   ]
 }

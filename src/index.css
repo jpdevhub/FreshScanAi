@@ -406,3 +406,7 @@ input::placeholder {
   --color-outline-variant: #c9c9c9;
   --color-tertiary: #121212;
 }
+
+@media print {
+  nav, .print\:hidden { display: none !important; }
+}

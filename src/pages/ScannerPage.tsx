@@ -351,6 +351,18 @@ export default function ScannerPage() {
               </div>
             )}
 
+             // After scan completes and grade === 'A'
+                  {result.grade === 'A' && (
+                <button
+                     onClick={() => {
+                     navigator.clipboard.writeText(`${window.location.origin}/report/${result.id}`);
+                     setCopied(true);
+                     setTimeout(() => setCopied(false), 2000);}}
+                   className="..."
+               >
+           🔗 Share Grade A Report
+               </button>
+      )}
             <StatusTerminal
               messages={['MODEL: STREAM_DUAL', 'DEVICE: ON_EDGE', 'LATENCY: <50ms']}
               className="justify-center"
