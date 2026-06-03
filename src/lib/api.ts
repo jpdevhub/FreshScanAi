@@ -39,19 +39,21 @@ function authHeaders(): Record<string, string> {
 
 // ── Shared Error Handling Logic ──────────────────────────────────────────────
 
+// ── Shared Error Handling Logic ──────────────────────────────────────────────
+
 async function handleResponse(res: Response): Promise<Response> {
   if (res.ok) return res;
 
   // Handle 5xx errors (Server Side)
   if (res.status >= 500) {
-    toast.error("Server error. Please try again later.");
-  } else {
-    // Handle 4xx errors
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error((err as { detail?: string }).detail || `HTTP ${res.status}`);
+    const msg = "Server error. Please try again later.";
+    toast.error(msg);
+    throw new Error(msg); 
   }
   
-  throw new Error(`HTTP ${res.status}`);
+  // Handle 4xx errors
+  const err = await res.json().catch(() => ({ detail: res.statusText }));
+  throw new Error((err as { detail?: string }).detail || `HTTP ${res.status}`);
 }
 
 // Reusable wrapper to catch network-level drops

@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { usePostHog } from 'posthog-js/react';
 import { api, clearToken, isAuthenticated } from '../lib/api';
 import type { UserProfile } from '../lib/types';
+import { toggleTheme } from '../lib/theme'; // Import the toggle function
 
 export default function Navbar() {
   const location = useLocation();
@@ -45,7 +46,6 @@ export default function Navbar() {
   const handleLogout = () => {
     setIsDropdownOpen(false);
     clearToken();
-    // Reset PostHog session so next user on this device isn't tracked as this user
     posthog?.reset();
     navigate('/');
     setShowToast(true);
@@ -90,51 +90,61 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* Auth Button & Modal */}
-        {loggedIn ? (
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-3 bg-surface-low border border-outline-variant/30 text-on-surface px-3 py-1.5 transition-all duration-200 hover:bg-surface-mid ghost-border"
-            >
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} referrerPolicy="no-referrer" alt="Profile" className="w-7 h-7 rounded-full object-cover grayscale-[0.5] contrast-125 border border-neon/30" />
-              ) : (
-                <div className="w-7 h-7 bg-surface-highest flex items-center justify-center text-neon text-xs font-bold font-[family-name:var(--font-display)]">
-                  {profile?.full_name?.charAt(0) || 'U'}
+        {/* Auth Button & Theme Toggle */}
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Theme Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="font-[family-name:var(--font-mono)] text-[9px] sm:text-[10px] tracking-widest text-on-surface-variant hover:text-neon transition-colors duration-200 border border-outline-variant/30 px-2 py-1 sm:px-3"
+          >
+            THEME
+          </button>
+          {loggedIn ? (
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 sm:gap-3 bg-surface-low border border-outline-variant/30 text-on-surface px-2 py-1 sm:px-3 sm:py-1.5 transition-all duration-200 hover:bg-surface-mid ghost-border"
+              >
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} referrerPolicy="no-referrer" alt="Profile" className="w-7 h-7 object-cover grayscale-[0.5] contrast-125 border border-neon/30" />
+                ) : (
+                  <div className="w-7 h-7 bg-surface-highest flex items-center justify-center text-neon text-xs font-bold font-[family-name:var(--font-display)]">
+                    {profile?.full_name?.charAt(0) || 'U'}
+                  </div>
+                )}
+                <span className="text-xs sm:text-sm font-[family-name:var(--font-mono)] tracking-wider mr-1 uppercase truncate max-w-[60px] sm:max-w-[100px] inline-block align-bottom" title={profile?.full_name?.split(' ')[0] || 'DEV'}>
+                  {profile?.full_name ? profile.full_name.split(' ')[0] : 'DEV'}
+                </span>
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-surface-low border border-outline-variant/30 shadow-2xl p-2 flex flex-col gap-1 z-50">
+                  <Link
+                    to="/results"
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="px-4 py-3 text-sm font-[family-name:var(--font-display)] font-bold text-on-surface-variant hover:text-neon hover:bg-surface-high no-underline transition-colors duration-200 block"
+                  >
+                    RESULTS
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="px-4 py-3 text-sm font-[family-name:var(--font-display)] font-bold text-error text-left hover:bg-error/10 transition-colors duration-200 block w-full"
+                  >
+                    TERMINATE_SESSION (LOGOUT)
+                  </button>
                 </div>
               )}
-              <span className="text-sm font-[family-name:var(--font-mono)] tracking-wider mr-1 uppercase">
-                {profile?.full_name ? profile.full_name.split(' ')[0] : 'SESSION'}
-              </span>
-            </button>
-
-            {isDropdownOpen && (
-              <div className="absolute right-0 top-full mt-2 w-48 bg-surface-low border border-outline-variant/30 shadow-2xl p-2 flex flex-col gap-1 z-50">
-                <Link
-                  to="/results"
-                  onClick={() => setIsDropdownOpen(false)}
-                  className="px-4 py-3 text-sm font-[family-name:var(--font-display)] font-bold text-on-surface-variant hover:text-neon hover:bg-surface-high no-underline transition-colors duration-200 block"
-                >
-                  RESULTS
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-3 text-sm font-[family-name:var(--font-display)] font-bold text-error text-left hover:bg-error/10 transition-colors duration-200 block w-full"
-                >
-                  TERMINATE_SESSION (LOGOUT)
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <Link
-            to="/auth"
-            className="flex items-center gap-2 bg-neon text-on-primary px-3 py-1.5 md:px-5 md:py-2.5 font-[family-name:var(--font-display)] font-bold text-xs md:text-sm tracking-wide no-underline transition-all duration-200 hover:bg-neon-dim"
-          >
-            SIGN_IN / SIGN_UP
-          </Link>
-        )}
+            </div>
+          ) : (
+            <Link
+              to="/auth"
+              className="flex items-center gap-2 bg-neon text-on-primary px-3 py-1.5 md:px-5 md:py-2.5 font-[family-name:var(--font-display)] font-bold text-xs md:text-sm tracking-wide no-underline transition-all duration-200 hover:bg-neon-dim"
+            >
+              SIGN_IN / SIGN_UP
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Logout Toast Notification */}
