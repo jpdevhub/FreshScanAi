@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import StatusTerminal from '../components/StatusTerminal';
 import { api } from '../lib/api';
 import type { HistoryScan, HistoryStats } from '../lib/types';
+import { useComparison } from '../context/ComparisonContext';
 
 export default function ResultsPage() {
+  const navigate = useNavigate();
+  const { selectedScanIds, toggleScanSelection, isComparisonReady } = useComparison();
+  
   const [scans, setScans] = useState<HistoryScan[]>([]);
   const [stats, setStats] = useState<HistoryStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +62,7 @@ export default function ResultsPage() {
   const freshRate = stats?.fresh_rate_percent ?? 0;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] px-6 md:px-16 lg:px-24 py-8 md:py-12">
+    <div className="min-h-[calc(100vh-4rem)] px-6 md:px-16 lg:px-24 py-8 md:py-12 pb-28">
       <div className="max-w-4xl mx-auto">
         <StatusTerminal
           messages={[
@@ -113,65 +117,106 @@ export default function ResultsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {scans.map(h => (
-              <Link
-                key={h.id}
-                to={`/analysis?id=${h.id}`}
-                className="block no-underline group"
-              >
-                <GlassCard
-                  className={`p-5 transition-all duration-200 group-hover:bg-surface-high ${h.is_fresh ? 'freshness-bar-fresh' : 'freshness-bar-spoiled'}`}
-                  variant="tonal"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                      {/* Thumbnail */}
-                      {h.photo_url && (
-                        <img
-                          src={h.photo_url}
-                          alt={h.species_detected}
-                          className="w-12 h-12 object-cover shrink-0 opacity-80 group-hover:opacity-100 transition-opacity"
-                        />
-                      )}
+            {scans.map(h => {
+              const isChecked = selectedScanIds.includes(h.id);
+              
+              return (
+                <div key={h.id} className="flex items-center gap-4">
+                  {/* REQUIREMENT 1 & 2: Checkbox toggle placed side-by-side with scan card */}
+                  <div className="flex items-center justify-center shrink-0 p-1">
+                    <input
+                      type="checkbox"
+                      id={`compare-${h.id}`}
+                      checked={isChecked}
+                      onChange={() => toggleScanSelection(h.id)}
+                      className="w-5 h-5 accent-neon cursor-pointer bg-surface-mid border-on-surface-variant/30 rounded focus:ring-0"
+                    />
+                  </div>
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-3 mb-1">
-                          <h3 className="font-[family-name:var(--font-display)] text-base font-bold">
-                            {h.species_detected}
-                          </h3>
-                          <span className="font-[family-name:var(--font-mono)] text-[0.5rem] tracking-widest text-neon-text bg-surface-highest px-2 py-0.5">
-                            {h.grade}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1">
-                          <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant">
-                            {h.scan_display_id}
-                          </span>
-                          <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant">
-                            {h.market_name}
-                          </span>
-                          {h.timestamp && (
-                            <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant">
-                              {new Date(h.timestamp).toLocaleString('en-IN', {
-                                day: '2-digit', month: 'short', year: 'numeric',
-                                hour: '2-digit', minute: '2-digit',
-                              })}
-                            </span>
+                  <Link
+                    to={`/analysis?id=${h.id}`}
+                    className="block no-underline group flex-1 min-w-0"
+                  >
+                    <GlassCard
+                      className={`p-5 transition-all duration-200 group-hover:bg-surface-high ${
+                        isChecked 
+                          ? 'border-neon ring-1 ring-neon/30' 
+                          : h.is_fresh ? 'freshness-bar-fresh' : 'freshness-bar-spoiled'
+                      }`}
+                      variant="tonal"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          {/* Thumbnail */}
+                          {h.photo_url && (
+                            <img
+                              src={h.photo_url}
+                              alt={h.species_detected}
+                              className="w-12 h-12 object-cover shrink-0 opacity-80 group-hover:opacity-100 transition-opacity"
+                            />
                           )}
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-3 mb-1">
+                              <h3 className="font-[family-name:var(--font-display)] text-base font-bold">
+                                {h.species_detected}
+                              </h3>
+                              <span className="font-[family-name:var(--font-mono)] text-[0.5rem] tracking-widest text-neon-text bg-surface-highest px-2 py-0.5">
+                                {h.grade}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1">
+                              <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant">
+                                {h.scan_display_id}
+                              </span>
+                              <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant">
+                                {h.market_name}
+                              </span>
+                              {h.timestamp && (
+                                <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant">
+                                  {new Date(h.timestamp).toLocaleString('en-IN', {
+                                    day: '2-digit', month: 'short', year: 'numeric',
+                                    hour: '2-digit', minute: '2-digit',
+                                  })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 shrink-0">
+                          <span className={`font-[family-name:var(--font-display)] text-2xl font-bold ${h.is_fresh ? 'text-secondary' : 'text-error'}`}>
+                            {h.freshness_index}
+                          </span>
+                          <ArrowRight size={16} className="text-on-surface-variant group-hover:text-neon transition-colors" />
                         </div>
                       </div>
-                    </div>
+                    </GlassCard>
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-                    <div className="flex items-center gap-4 shrink-0">
-                      <span className={`font-[family-name:var(--font-display)] text-2xl font-bold ${h.is_fresh ? 'text-secondary' : 'text-error'}`}>
-                        {h.freshness_index}
-                      </span>
-                      <ArrowRight size={16} className="text-on-surface-variant group-hover:text-neon transition-colors" />
-                    </div>
-                  </div>
-                </GlassCard>
-              </Link>
-            ))}
+        {/* REQUIREMENT 3 & 4: Floating action bar to maintain selection state & conditionally enable action */}
+        {selectedScanIds.length > 0 && (
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-surface-mid border border-on-surface-variant/20 shadow-2xl rounded-xl p-4 flex items-center justify-between gap-6 max-w-md w-11/12 animate-in fade-in slide-in-from-bottom-4 duration-200">
+            <span className="font-[family-name:var(--font-mono)] text-xs tracking-widest text-on-surface">
+              SELECTED: <span className="text-neon font-bold">{selectedScanIds.length}</span>/4_SCANS
+            </span>
+            
+            <button
+              disabled={!isComparisonReady}
+              onClick={() => navigate(`/analysis?compare=${selectedScanIds.join(',')}`)}
+              className={`px-5 py-3 font-[family-name:var(--font-display)] font-bold text-xs tracking-wider transition-all duration-150 ${
+                isComparisonReady
+                  ? 'bg-neon text-on-primary hover:bg-neon-dim shadow-md active:scale-[0.98] cursor-pointer'
+                  : 'bg-surface-highest text-on-surface-variant/40 cursor-not-allowed border border-on-surface-variant/10'
+              }`}
+            >
+              COMPARE_SELECTED
+            </button>
           </div>
         )}
       </div>

@@ -23,6 +23,8 @@ function gradeColor(grade: string) {
 export default function AnalysisDashboard() {
   const [params] = useSearchParams();
   const [scan, setScan]         = useState<ScanResult | null>(null);
+  const [comparisonScans, setComparisonScans] = useState<ScanResult[]>([]);
+  const [isComparisonMode, setIsComparisonMode] = useState(false);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
 
@@ -31,15 +33,31 @@ export default function AnalysisDashboard() {
       setLoading(true);
       setError('');
       try {
-        const idParam  = params.get('id');
-        const lastId   = sessionStorage.getItem('lastScanId');
-        const targetId = idParam || lastId;
+        const compareParam = params.get('compare');
+        const idParam      = params.get('id');
 
-        const res = targetId
-          ? await api.getScan(targetId)
-          : await api.getLatestScan();
+        if (compareParam) {
+          setIsComparisonMode(true);
+          const ids = compareParam.split(',');
+          
+          const records = await Promise.all(ids.map(id => api.getScan(id)));
+          const parsedScans = records.map(res => res.scan);
+          
+          setComparisonScans(parsedScans);
+          if (parsedScans.length > 0) {
+            setScan(parsedScans[0]);
+          }
+        } else {
+          setIsComparisonMode(false);
+          const lastId   = sessionStorage.getItem('lastScanId');
+          const targetId = idParam || lastId;
 
-        setScan(res.scan);
+          const res = targetId
+            ? await api.getScan(targetId)
+            : await api.getLatestScan();
+
+          setScan(res.scan);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load scan data.');
       } finally {
@@ -49,17 +67,15 @@ export default function AnalysisDashboard() {
     load();
   }, [params]);
 
-  // ── Loading state ────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
-        <StatusTerminal messages={['LOADING_ANALYSIS...', 'FETCHING_RESULT']} />
+        <StatusTerminal messages={isComparisonMode ? ['LOADING_COMPARISONS...', 'FETCHING_MULTIPLE_RESULTS'] : ['LOADING_ANALYSIS...', 'FETCHING_RESULT']} />
       </div>
     );
   }
 
-  // ── Error state ──────────────────────────────────────────────────────────
-  if (error || !scan) {
+  if (error || (!scan && !isComparisonMode)) {
     return (
       <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center gap-6 px-6">
         <StatusTerminal messages={['LOAD_FAILED', 'NO_DATA']} />
@@ -76,8 +92,8 @@ export default function AnalysisDashboard() {
     );
   }
 
-  const { freshness_index, grade, confidence, classification, species, biomarkers, recommendations } = scan;
-  const displayId = scan.scan_display_id;
+  const { freshness_index, grade, confidence, classification, species, biomarkers, recommendations } = scan!;
+  const displayId = scan!.scan_display_id;
   const alerts    = recommendations.alert_flags;
 
   return (
