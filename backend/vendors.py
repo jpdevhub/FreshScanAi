@@ -18,18 +18,26 @@ def _compute_badge(avg_score: float, total_scans: int) -> str:
 
 
 def _compute_trend(db, vendor_id: str) -> str:
-    now           = datetime.now(timezone.utc)
-    week_ago      = (now - timedelta(days=7)).isoformat()
+    now = datetime.now(timezone.utc)
+    week_ago = (now - timedelta(days=7)).isoformat()
     two_weeks_ago = (now - timedelta(days=14)).isoformat()
 
-    recent = db.table("scans").select("freshness_index") \
-        .eq("vendor_id", vendor_id) \
-        .gte("timestamp", week_ago).execute()
+    recent = (
+        db.table("scans")
+        .select("freshness_index")
+        .eq("vendor_id", vendor_id)
+        .gte("timestamp", week_ago)
+        .execute()
+    )
 
-    prior = db.table("scans").select("freshness_index") \
-        .eq("vendor_id", vendor_id) \
-        .gte("timestamp", two_weeks_ago) \
-        .lt("timestamp", week_ago).execute()
+    prior = (
+        db.table("scans")
+        .select("freshness_index")
+        .eq("vendor_id", vendor_id)
+        .gte("timestamp", two_weeks_ago)
+        .lt("timestamp", week_ago)
+        .execute()
+    )
 
     def avg(rows):
         # freshness_index=0 is valid, use 'is not None'
@@ -49,19 +57,14 @@ def _compute_trend(db, vendor_id: str) -> str:
 
 
 def register_routes(router: APIRouter, db_getter):
-
     @router.get("/leaderboard")
-    async def get_leaderboard(
-        limit: int = Query(default=20, ge=1, le=100)
-    ):
+    async def get_leaderboard(limit: int = Query(default=20, ge=1, le=100)):
         """Public leaderboard — no auth required."""
         try:
             resp = (
-                db_getter().table("vendors")
-                .select(
-                    "id, name, address, avg_freshness_score, "
-                    "total_scans, trust_badge, trend"
-                )
+                db_getter()
+                .table("vendors")
+                .select("id, name, address, avg_freshness_score, total_scans, trust_badge, trend")
                 .order("avg_freshness_score", desc=True)
                 .limit(limit)
                 .execute()
@@ -75,11 +78,9 @@ def register_routes(router: APIRouter, db_getter):
         """Trust score for a single vendor — no auth required."""
         try:
             resp = (
-                db_getter().table("vendors")
-                .select(
-                    "id, name, address, avg_freshness_score, "
-                    "total_scans, trust_badge, trend"
-                )
+                db_getter()
+                .table("vendors")
+                .select("id, name, address, avg_freshness_score, total_scans, trust_badge, trend")
                 .eq("id", vendor_id)
                 .limit(1)
                 .execute()
@@ -102,7 +103,8 @@ def register_routes(router: APIRouter, db_getter):
         """Recompute trust score from scans. Requires authentication."""
         try:
             scans = (
-                db_getter().table("scans")
+                db_getter()
+                .table("scans")
                 .select("freshness_index")
                 .eq("vendor_id", vendor_id)
                 .execute()
@@ -112,25 +114,27 @@ def register_routes(router: APIRouter, db_getter):
                 raise HTTPException(status_code=404, detail="No scans found for this vendor.")
 
             scores = [r["freshness_index"] for r in rows]
-            total  = len(scores)
-            avg    = round(sum(scores) / total, 2)
-            badge  = _compute_badge(avg, total)
-            trend  = _compute_trend(db_getter(), vendor_id)
+            total = len(scores)
+            avg = round(sum(scores) / total, 2)
+            badge = _compute_badge(avg, total)
+            trend = _compute_trend(db_getter(), vendor_id)
 
-            db_getter().table("vendors").update({
-                "avg_freshness_score": avg,
-                "total_scans":         total,
-                "trust_badge":         badge,
-                "trend":               trend,
-            }).eq("id", vendor_id).execute()
+            db_getter().table("vendors").update(
+                {
+                    "avg_freshness_score": avg,
+                    "total_scans": total,
+                    "trust_badge": badge,
+                    "trend": trend,
+                }
+            ).eq("id", vendor_id).execute()
 
             return {
-                "success":     True,
-                "vendor_id":   vendor_id,
-                "avg_score":   avg,
+                "success": True,
+                "vendor_id": vendor_id,
+                "avg_score": avg,
                 "total_scans": total,
                 "trust_badge": badge,
-                "trend":       trend,
+                "trend": trend,
             }
         except HTTPException:
             raise

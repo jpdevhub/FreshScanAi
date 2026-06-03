@@ -82,7 +82,7 @@ def test_process_and_fuse_grade_is_valid():
 
 
 def test_process_and_fuse_uncertain_flag_is_bool():
-    body = np.array([1.0, 1.0, 1.0])   # uniform → low confidence
+    body = np.array([1.0, 1.0, 1.0])  # uniform → low confidence
     eye = np.array([1.0, 1.0, 1.0, 1.0])
     gill = np.array([1.0, 1.0, 1.0, 1.0])
     result = process_and_fuse(body, eye, gill)
@@ -93,9 +93,11 @@ def test_process_and_fuse_uncertain_flag_is_bool():
 # auth.py — environment parsing logic, no Supabase connection needed
 # ---------------------------------------------------------------------------
 
+
 def test_dev_bypass_constants_are_readable():
     """Verify the module loads and the env-driven constants are accessible."""
     import auth
+
     assert hasattr(auth, "DEV_BYPASS_AUTH")
     assert hasattr(auth, "DEV_BYPASS_TOKEN")
     assert isinstance(auth.DEV_BYPASS_AUTH, bool)
