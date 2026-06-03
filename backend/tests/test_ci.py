@@ -117,13 +117,6 @@ def test_dev_bypass_constants_are_readable():
     assert isinstance(auth.DEV_BYPASS_TOKEN, str)
 
 
-# ---------------------------------------------------------------------------
-# main.py — Grade Derivation Logic & Validation Checks
-# ---------------------------------------------------------------------------
-
-
-
-
 # Now we can safely import from main without needing the actual package installed!
 import pytest
 from main import _derive_grade
