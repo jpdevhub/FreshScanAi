@@ -1,6 +1,12 @@
 import { getPendingScans, removeScan } from './offlineQueue'
 
-async function uploadScan(scan: any) {
+// 1. Define a clean interface for a Scan item to resolve type issues
+interface ScanItem {
+  id: number;
+  [key: string]: unknown; // Allows any other dynamic fields
+}
+
+async function uploadScan(scan: ScanItem) {
   const response = await fetch('/api/scans', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -13,7 +19,9 @@ async function uploadScan(scan: any) {
 export async function syncOfflineScans() {
   if (!navigator.onLine) return
 
-  const pending = await getPendingScans()
+  // Cast the pending scans array to our ScanItem interface
+  const pending = (await getPendingScans()) as ScanItem[]
+  
   for (const scan of pending) {
     try {
       await uploadScan(scan)
@@ -27,6 +35,6 @@ export async function syncOfflineScans() {
 
 // Auto sync when internet comes back
 window.addEventListener('online', () => {
-  console.log('🌐 Back online — syncing offline scans...')
+  console.log('🌐 Back online – syncing offline scans...')
   syncOfflineScans()
 })

@@ -13,7 +13,7 @@ export function openDB(): Promise<IDBDatabase> {
   })
 }
 
-export async function queueScan(scanData: object) {
+export async function queueScan(scanData: Record<string, unknown>) {
   const db = await openDB()
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite')
@@ -25,10 +25,10 @@ export async function queueScan(scanData: object) {
 
 export async function getPendingScans() {
   const db = await openDB()
-  return new Promise<any[]>((resolve, reject) => {
+  return new Promise<Record<string, unknown>[]>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly')
     const req = tx.objectStore(STORE_NAME).getAll()
-    req.onsuccess = () => resolve(req.result)
+    req.onsuccess = () => resolve(req.result as Record<string, unknown>[])
     req.onerror = () => reject(req.error)
   })
 }
