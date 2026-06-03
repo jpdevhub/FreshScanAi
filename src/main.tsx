@@ -5,9 +5,11 @@ import { PostHogProvider } from 'posthog-js/react'
 import './index.css'
 import App from './App.tsx'
 import { initTheme } from './lib/theme';
+import { syncOfflineScans } from './utils/syncManager'
 
 // Initialize theme before rendering the app to prevent flicker
 initTheme();
+syncOfflineScans()
 
 // PostHog is only initialized when the key is present.
 // Contributors running locally without the key will have it silently disabled.
