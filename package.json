@@ -21,6 +21,7 @@
     "i18next": "^26.3.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.16.0",
+    "onnxruntime-web": "^1.26.0",
     "posthog-js": "^1.376.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
