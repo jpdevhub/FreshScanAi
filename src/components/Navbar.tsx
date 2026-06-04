@@ -60,7 +60,7 @@ export default function Navbar() {
 
   return (
     <nav className="glass-panel fixed top-0 left-0 right-0 z-50 border-b border-outline-variant/15">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 no-underline">
           <img
@@ -137,12 +137,13 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <Link
+           <Link
               to="/auth"
-              className="flex items-center gap-2 bg-neon text-on-primary px-3 py-1.5 md:px-5 md:py-2.5 font-[family-name:var(--font-display)] font-bold text-xs md:text-sm tracking-wide no-underline transition-all duration-200 hover:bg-neon-dim"
-            >
-              SIGN_IN / SIGN_UP
-            </Link>
+              className="flex items-center gap-1 bg-neon text-on-primary px-2 py-1 md:px-5 md:py-2.5 font-[family-name:var(--font-display)] font-bold text-[10px] md:text-sm tracking-wide no-underline transition-all duration-200 hover:bg-neon-dim whitespace-nowrap"
+              >
+              <span className="hidden sm:inline">SIGN_IN / SIGN_UP</span>
+              <span className="sm:hidden">LOGIN</span>
+          </Link>
           )}
         </div>
       </div>
