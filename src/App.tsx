@@ -32,9 +32,6 @@ export default function App() {
           
           {/* Catch-all route for broken links/404s */}
           <Route path="*" element={<NotFound />} />
-          import PublicReport from './pages/PublicReport';
-
-          // Inside <Routes>:
           <Route path="/report/:id" element={<PublicReport />} />
         </Route>
       </Routes>

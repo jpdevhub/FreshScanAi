@@ -3,7 +3,12 @@ import { useParams } from 'react-router-dom';
 
 export default function PublicReport() {
   const { id } = useParams();
-  const [scan, setScan] = useState<any>(null);
+  interface ScanData {
+  id: string;
+  // add other fields your scan object has
+  [key: string]: unknown;
+}
+const [scan, setScan] = useState<ScanData | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {

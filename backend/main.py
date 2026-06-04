@@ -9,7 +9,8 @@ from typing import Optional
 from api.public import router as public_router
 
 app.include_router(public_router, prefix="/public", tags=["public"])
-# Result: GET /public/report/{scan_id} serves the public report endpoint without auth, used by QR code scans and public links.
+#Result: GET /public/report/{scan_id} serves the public report endpoint
+#without auth, used by QR code scans and public links.
 
 # Load .env file if present (python-dotenv)
 try:
@@ -95,8 +96,11 @@ async def lifespan(app: FastAPI):
         )
     yield
 
+from fastapi import FastAPI
+from api.public import router as public_router
 
 app = FastAPI(title="FreshScan AI", version="1.1.0", lifespan=lifespan)
+app.include_router(public_router , prefix="/public", tags=["public"])
 
 _cors_origins = ["*"] if CORS_ALLOW_ALL else [
     FRONTEND_URL,
