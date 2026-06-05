@@ -7,32 +7,32 @@ import { api } from '../lib/api';
 import type { ScanResult } from '../lib/types';
 
 const BIOMARKER_META = {
-  gill_saturation:   { label: 'Gill Saturation',   icon: Droplets },
-  corneal_clarity:   { label: 'Corneal Clarity',    icon: EyeIcon  },
-  epidermal_tension: { label: 'Epidermal Tension',  icon: Fish     },
+  gill_saturation: { label: 'Gill Saturation', icon: Droplets },
+  corneal_clarity: { label: 'Corneal Clarity', icon: EyeIcon },
+  epidermal_tension: { label: 'Epidermal Tension', icon: Fish },
 } as const;
 
 type BiomarkerKey = keyof typeof BIOMARKER_META;
 
 function gradeColor(grade: string) {
   if (grade === 'A+' || grade === 'A') return 'text-secondary';
-  if (grade === 'B')                   return 'text-neon';
+  if (grade === 'B') return 'text-neon';
   return 'text-error';
 }
 
 export default function AnalysisDashboard() {
   const [params] = useSearchParams();
-  const [scan, setScan]         = useState<ScanResult | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState('');
+  const [scan, setScan] = useState<ScanResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       setError('');
       try {
-        const idParam  = params.get('id');
-        const lastId   = sessionStorage.getItem('lastScanId');
+        const idParam = params.get('id');
+        const lastId = sessionStorage.getItem('lastScanId');
         const targetId = idParam || lastId;
 
         const res = targetId
@@ -78,7 +78,7 @@ export default function AnalysisDashboard() {
 
   const { freshness_index, grade, confidence, classification, species, biomarkers, recommendations } = scan;
   const displayId = scan.scan_display_id;
-  const alerts    = recommendations.alert_flags;
+  const alerts = recommendations.alert_flags;
 
   return (
     <div className="min-h-[calc(100vh-4rem)] px-6 md:px-16 lg:px-24 py-8 md:py-12">
@@ -132,12 +132,22 @@ export default function AnalysisDashboard() {
               />
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] text-secondary tracking-widest">
                 CLASSIFICATION: {classification}
               </span>
+
               <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] text-on-surface-variant tracking-widest">
                 CONFIDENCE: {confidence}%
+              </span>
+
+              <span
+                className={`px-2 py-1 border text-xs font-semibold font-[family-name:var(--font-mono)] tracking-widest ${confidence < 70
+                    ? "text-error"
+                    : "text-neon"
+                  }`}
+              >
+                {confidence < 70 ? "LOW_CONFIDENCE" : "HIGH_CONFIDENCE"}
               </span>
             </div>
           </GlassCard>
@@ -191,7 +201,7 @@ export default function AnalysisDashboard() {
           <div className="space-y-3">
             {(Object.keys(BIOMARKER_META) as BiomarkerKey[]).map(key => {
               const meta = BIOMARKER_META[key];
-              const bm   = biomarkers[key];
+              const bm = biomarkers[key];
               const Icon = meta.icon;
               const isAlert = bm.status === 'CAUTION';
 

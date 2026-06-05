@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 import { usePostHog } from 'posthog-js/react';
@@ -14,6 +15,7 @@ export default function Navbar() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loggedIn, setLoggedIn] = useState(isAuthenticated());
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     let ignore = false;
@@ -53,9 +55,9 @@ export default function Navbar() {
   };
 
   const links = [
-    { to: '/', label: 'HOME' },
-    { to: '/scanner', label: 'SCANNER' },
-    { to: '/map', label: 'TRUST_MAP' },
+    { to: '/', label: t('home') },
+    { to: '/scanner', label: t('scanner') },
+    { to: '/map', label: t('trustMap') },
   ];
 
   return (
@@ -92,6 +94,15 @@ export default function Navbar() {
 
         {/* Auth Button & Theme Toggle */}
         <div className="flex items-center gap-2 sm:gap-4">
+          <select
+            value={i18n.language}
+            onChange={(e) => i18n.changeLanguage(e.target.value)}
+            className="bg-surface-low border border-outline-variant/30 px-2 py-1 text-xs"
+>
+            <option value="en">EN</option>
+            <option value="hi">HI</option>
+            <option value="bn">BN</option>
+          </select>
           {/* Theme Toggle Button */}
           <button
             type="button"

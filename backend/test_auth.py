@@ -26,7 +26,7 @@ BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
 TOKEN = os.environ.get("FRESHSCAN_TEST_TOKEN", "")
 
 # ─── Option B: Use email+password to get a token programmatically ────────────
-TEST_EMAIL    = os.environ.get("FRESHSCAN_TEST_EMAIL", "")
+TEST_EMAIL = os.environ.get("FRESHSCAN_TEST_EMAIL", "")
 TEST_PASSWORD = os.environ.get("FRESHSCAN_TEST_PASSWORD", "")
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://mjklfhjnebidbsizulgr.supabase.co")
@@ -36,15 +36,28 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 def _color(code: int, text: str) -> str:
     return f"\033[{code}m{text}\033[0m"
 
-def ok(msg):   print(_color(32, f"  ✅  PASS  | {msg}"))
-def fail(msg): print(_color(31, f"  ❌  FAIL  | {msg}")); sys.exit(1)
-def info(msg): print(_color(36, f"  ℹ️   INFO  | {msg}"))
-def section(title): print(f"\n{'─'*60}\n  {title}\n{'─'*60}")
+
+def ok(msg):
+    print(_color(32, f"  ✅  PASS  | {msg}"))
+
+
+def fail(msg):
+    print(_color(31, f"  ❌  FAIL  | {msg}"))
+    sys.exit(1)
+
+
+def info(msg):
+    print(_color(36, f"  ℹ️   INFO  | {msg}"))
+
+
+def section(title):
+    print(f"\n{'─' * 60}\n  {title}\n{'─' * 60}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Optionally fetch a token via Supabase REST (email+password)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def get_token_via_password() -> str:
     """Signs in to Supabase with email/password and returns the access token."""
@@ -72,6 +85,7 @@ def get_token_via_password() -> str:
 # 2. Test: Unauthenticated requests are rejected
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_unauthenticated_rejected():
     section("Test 1 — Unauthenticated Requests Should Be Rejected (401)")
 
@@ -89,10 +103,7 @@ def test_unauthenticated_rejected():
             ok(f"{method} {url.split(BASE_URL)[1]} → 422 (missing header) ✓")
         else:
             status_got = f"{r.status_code}: {r.text}"
-            fail(
-                f"{method} {url.split(BASE_URL)[1]}"
-                f" → expected 401/422, got {status_got}"
-            )
+            fail(f"{method} {url.split(BASE_URL)[1]} → expected 401/422, got {status_got}")
 
     # Wrong token format
     r = requests.get(
@@ -110,6 +121,7 @@ def test_unauthenticated_rejected():
 # 3. Test: /api/v1/auth/me returns correct profile
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_get_me(token: str):
     section("Test 2 — GET /api/v1/auth/me (Protected, Valid Token)")
 
@@ -120,7 +132,7 @@ def test_get_me(token: str):
         fail(f"/auth/me returned {r.status_code}: {r.text}")
 
     data = r.json()
-    assert "id" in data,    "Response missing 'id'"
+    assert "id" in data, "Response missing 'id'"
     assert "email" in data, "Response missing 'email'"
     ok(f"/auth/me → id={data['id']}, email={data['email']}")
     return data
@@ -129,6 +141,7 @@ def test_get_me(token: str):
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. Test: /api/v1/scans/history returns paginated list
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_scan_history(token: str):
     section("Test 3 — GET /api/v1/scans/history (Paginated)")
@@ -161,6 +174,7 @@ def test_scan_history(token: str):
 # 5. Test: /api/v1/auth/login/google returns a redirect (302)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_google_oauth_redirect():
     section("Test 4 — GET /api/v1/auth/login/google (Redirects to Google)")
 
@@ -182,6 +196,7 @@ def test_google_oauth_redirect():
 # ─────────────────────────────────────────────────────────────────────────────
 # 6. Test: /api/v1/vendors is public (no auth required)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_public_vendors():
     section("Test 5 — GET /api/v1/vendors (Public Endpoint, No Auth)")
