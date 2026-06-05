@@ -10,6 +10,7 @@ import MarketMapPage from './pages/MarketMapPage';
 import ResultsPage from './pages/ResultsPage';
 import PostHogPageView from './components/PostHogPageView';
 import NotFound from './pages/NotFound';
+import PublicReport from "./pages/PublicReport";
 
 export default function App() {
   return (

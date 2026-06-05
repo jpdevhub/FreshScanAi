@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional
+app = FastAPI(title="FreshScan AI", version="1.1.0", lifespan=lifespan)
 from api.public import router as public_router
 
 app.include_router(public_router, prefix="/public", tags=["public"])

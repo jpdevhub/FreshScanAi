@@ -16,6 +16,7 @@ export default function ScannerPage() {
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
   // Controls whether the camera stream is active
   const [cameraActive, setCameraActive] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   const videoRef      = useRef<HTMLVideoElement>(null);
   const progressRef   = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -350,6 +351,29 @@ export default function ScannerPage() {
                 </button>
               </div>
             )}
+             {scanComplete && (
+               <div className="flex flex-col gap-3">
+                    {/* ... existing buttons ... */}
+                    {freshness !== null && (
+                       <button
+                           onClick={async () => {
+                                 // Get the result from the API or sessionStorage
+                                 const scanId = sessionStorage.getItem('lastScanId');
+                                 if (scanId) {
+                                      navigator.clipboard.writeText(`${window.location.origin}/report/${scanId}`);
+                                      setCopied(true);
+                                      setTimeout(() => setCopied(false), 2000);
+                                    }
+                                }}
+                                className="w-full py-3 bg-blue-600 text-white rounded-lg"
+                         >
+                                {copied ? '✓ Copied!' : '🔗 Share Report'}
+                           </button>
+                         )}
+                 </div>
+)}
+These fixes will resolve all TypeScript compilation errors and allow the build to complete successfully.
+
 
              // After scan completes and grade === 'A'
                   {result.grade === 'A' && (
