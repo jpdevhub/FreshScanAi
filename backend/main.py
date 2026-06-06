@@ -634,8 +634,15 @@ async def get_vendors():
 async def get_leaderboard():
     try:
         fields = "id, name, address, avg_freshness_score, total_scans"
-        resp = _db().table("vendors").select(fields).order("avg_freshness_score", desc=True).limit(10).execute()
-        
+        resp = (
+            _db()
+            .table("vendors")
+            .select(fields)
+            .order("avg_freshness_score", desc=True)
+            .limit(10)
+            .execute()
+        )
+
         leaderboard = []
         for v in (resp.data or []):
             score = v.get("avg_freshness_score") or 0
@@ -647,7 +654,7 @@ async def get_leaderboard():
                 badge = "bronze"
             else:
                 badge = "unranked"
-                
+
             leaderboard.append({
                 "id": v["id"],
                 "name": v["name"],
@@ -655,9 +662,9 @@ async def get_leaderboard():
                 "avg_freshness_score": score,
                 "total_scans": v.get("total_scans") or 0,
                 "trust_badge": badge,
-                "trend": "stable"
+                "trend": "stable",
             })
-            
+
         return {"success": True, "leaderboard": leaderboard}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
