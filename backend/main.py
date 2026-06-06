@@ -6,12 +6,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional
-app = FastAPI(title="FreshScan AI", version="1.1.0", lifespan=lifespan)
-from api.public import router as public_router
 
-app.include_router(public_router, prefix="/public", tags=["public"])
-#Result: GET /public/report/{scan_id} serves the public report endpoint
-#without auth, used by QR code scans and public links.
 
 # Load .env file if present (python-dotenv)
 try:
@@ -98,10 +93,8 @@ async def lifespan(app: FastAPI):
     yield
 
 from fastapi import FastAPI
-from api.public import router as public_router
 
 app = FastAPI(title="FreshScan AI", version="1.1.0", lifespan=lifespan)
-app.include_router(public_router , prefix="/public", tags=["public"])
 
 _cors_origins = ["*"] if CORS_ALLOW_ALL else [
     FRONTEND_URL,
@@ -353,6 +346,23 @@ async def get_me(current_user=Depends(get_current_user)):
             or current_user.user_metadata.get("picture")
         ),
     }
+
+
+@app.get("/api/v1/public/report/{scan_id}")
+async def get_public_report(scan_id: str):
+    try:
+        resp = _db().table("scans").select("*").eq("id", scan_id).execute()
+        if not resp.data:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        return {"success": True, "scan": resp.data[0]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+# ── MAIN ──────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 
 
 # ── SCAN ──────────────────────────────────────────────────────────────────────

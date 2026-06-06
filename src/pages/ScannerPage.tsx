@@ -351,42 +351,23 @@ export default function ScannerPage() {
                 </button>
               </div>
             )}
-             {scanComplete && (
-               <div className="flex flex-col gap-3">
-                    {/* ... existing buttons ... */}
-                    {freshness !== null && (
-                       <button
-                           onClick={async () => {
-                                 // Get the result from the API or sessionStorage
-                                 const scanId = sessionStorage.getItem('lastScanId');
-                                 if (scanId) {
-                                      navigator.clipboard.writeText(`${window.location.origin}/report/${scanId}`);
-                                      setCopied(true);
-                                      setTimeout(() => setCopied(false), 2000);
-                                    }
-                                }}
-                                className="w-full py-3 bg-blue-600 text-white rounded-lg"
-                         >
-                                {copied ? '✓ Copied!' : '🔗 Share Report'}
-                           </button>
-                         )}
-                 </div>
-)}
-These fixes will resolve all TypeScript compilation errors and allow the build to complete successfully.
-
-
-             // After scan completes and grade === 'A'
-                  {result.grade === 'A' && (
-                <button
-                     onClick={() => {
-                     navigator.clipboard.writeText(`${window.location.origin}/report/${result.id}`);
-                     setCopied(true);
-                     setTimeout(() => setCopied(false), 2000);}}
-                   className="..."
-               >
-           🔗 Share Grade A Report
-               </button>
-      )}
+             {scanComplete && freshness !== null && freshness >= 85 && (
+               <div className="flex flex-col gap-3 mt-1">
+                 <button
+                   onClick={() => {
+                     const scanId = sessionStorage.getItem('lastScanId');
+                     if (scanId) {
+                       navigator.clipboard.writeText(`${window.location.origin}/report/${scanId}`);
+                       setCopied(true);
+                       setTimeout(() => setCopied(false), 2000);
+                     }
+                   }}
+                   className="w-full py-3 bg-secondary text-on-primary font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer border-none transition-colors hover:brightness-110 flex items-center justify-center gap-2"
+                 >
+                   {copied ? 'COPIED TO CLIPBOARD' : 'SHARE GRADE-A REPORT'}
+                 </button>
+               </div>
+             )}
             <StatusTerminal
               messages={['MODEL: STREAM_DUAL', 'DEVICE: ON_EDGE', 'LATENCY: <50ms']}
               className="justify-center"
