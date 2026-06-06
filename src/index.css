@@ -393,3 +393,7 @@ input::placeholder {
   --color-neon-text: #3a5200;     /* dark green instead of light yellow */
   --color-neon-dark: #3a5200;
 }
+
+@media print {
+  nav, .print\:hidden { display: none !important; }
+}

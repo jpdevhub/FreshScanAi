@@ -75,3 +75,38 @@ jobs:
           SUPABASE_SERVICE_KEY: ""
           FRONTEND_URL: http://localhost:5173
           API_BASE_URL: http://localhost:8000
+
+  deploy-backend-to-hf-spaces:
+    name: Deploy Backend → HF Spaces
+    # Only deploy on push to main, not on PRs
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: backend-lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0      # full history needed for subtree push
+          lfs: true
+
+      - name: Configure git
+        run: |
+          git config user.email "ci@freshscan.ai"
+          git config user.name "FreshScan CI"
+
+      - name: Push backend/ → HF Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # Check if HF_TOKEN is set
+          if [ -z "${HF_TOKEN}" ]; then
+            echo "ERROR: HF_TOKEN secret is missing!"
+            echo "Please add your Hugging Face Access Token as a Repository Secret named 'HF_TOKEN' in GitHub."
+            exit 1
+          fi
+          
+          # Since HF Spaces might have auto-generated files (like README.md)
+          # that aren't in this repo, a normal push gets rejected.
+          # We need to split the backend directory into its own commit history
+          # and FORCE push it to HF Spaces, making GitHub the single source of truth.
+          COMMIT_HASH=$(git subtree split --prefix backend main)
+          git push https://karansingh12:${HF_TOKEN}@huggingface.co/spaces/karansingh12/freshscan-api ${COMMIT_HASH}:main --force

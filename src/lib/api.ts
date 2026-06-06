@@ -39,24 +39,19 @@ function authHeaders(): Record<string, string> {
 
 // ── Shared Error Handling Logic ──────────────────────────────────────────────
 
-// ── Shared Error Handling Logic ──────────────────────────────────────────────
-
 async function handleResponse(res: Response): Promise<Response> {
   if (res.ok) return res;
 
-  // Handle 5xx errors (Server Side)
   if (res.status >= 500) {
     const msg = "Server error. Please try again later.";
     toast.error(msg);
-    throw new Error(msg); 
+    throw new Error(msg);
   }
-  
-  // Handle 4xx errors
+
   const err = await res.json().catch(() => ({ detail: res.statusText }));
   throw new Error((err as { detail?: string }).detail || `HTTP ${res.status}`);
 }
 
-// Reusable wrapper to catch network-level drops
 async function safeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   try {
     const res = await fetch(input, init);
@@ -84,10 +79,18 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 
 // ── Response envelopes ────────────────────────────────────────────────────────
 
-export interface ScanResponse { success: boolean; scan: ScanResult; }
+export interface ScanResponse    { success: boolean; scan: ScanResult; }
 export interface HistoryResponse { success: boolean; count: number; stats: HistoryStats; scans: HistoryScan[]; }
 export interface MarketsResponse { success: boolean; markets: Market[]; }
 export interface GradcamResponse { gradcam_image: string; predicted_class: string; class_index: number; mode: 'real' | 'demo'; }
+
+// Metadata sent alongside edge-inference results so the backend can store them
+// without re-running the ML pipeline on the server.
+export interface EdgeInferenceMeta {
+  freshness_label?: string;
+  fused_score?:     number;
+  source?:          'edge_onnx' | 'server';
+}
 
 // ── API surface ───────────────────────────────────────────────────────────────
 
@@ -96,10 +99,17 @@ export const api = {
 
   getMe: (): Promise<UserProfile> => apiFetch<UserProfile>('/api/v1/auth/me'),
 
-  // Scans - Using safeFetch to ensure network errors are caught
-  submitScan: async (blob: Blob): Promise<ScanResponse> => {
+  // ── Scans ────────────────────────────────────────────────────────────────
+  // meta is optional — when provided (edge inference path), the backend skips
+  // running its own ML pipeline and just stores the result we computed locally.
+  submitScan: async (blob: Blob, meta?: EdgeInferenceMeta): Promise<ScanResponse> => {
     const form = new FormData();
     form.append('image', blob, 'scan.jpg');
+
+    // Attach edge inference metadata if available
+    if (meta?.freshness_label) form.append('freshness_label', meta.freshness_label);
+    if (meta?.fused_score !== undefined) form.append('fused_score', String(meta.fused_score));
+    if (meta?.source) form.append('source', meta.source);
 
     const validRes = await safeFetch(`${API_BASE}/api/v1/scan-auto`, {
       method: 'POST',
@@ -110,12 +120,45 @@ export const api = {
     return validRes.json() as Promise<ScanResponse>;
   },
 
-  getLatestScan: (): Promise<ScanResponse> => apiFetch<ScanResponse>('/api/v1/scans/latest'),
-  getScan: (id: string): Promise<ScanResponse> => apiFetch<ScanResponse>(`/api/v1/scans/${id}`),
-  getScanHistory: (limit = 20, offset = 0): Promise<HistoryResponse> => 
+  /**
+   * Try the HF backend with a single image (same as submitScan with no meta).
+   * Returns null silently on network errors so callers can fall back to ONNX
+   * without showing an error toast.
+   * Throws on 4xx/5xx server errors (e.g. NOT_A_FISH from backend).
+   */
+  scanOnline: async (blob: Blob): Promise<ScanResponse | null> => {
+    const form = new FormData();
+    form.append('image', blob, 'scan.jpg');
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/scan-auto`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: form,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error((err as { detail?: string }).detail || `HTTP ${res.status}`);
+      }
+      return res.json() as Promise<ScanResponse>;
+    } catch (err) {
+      if (err instanceof TypeError) {
+        // Network offline — silent fallback to ONNX
+        return null;
+      }
+      throw err; // Server error (e.g. NOT_A_FISH) — propagate
+    }
+  },
+
+  getLatestScan: (): Promise<ScanResponse> =>
+    apiFetch<ScanResponse>('/api/v1/scans/latest'),
+
+  getScan: (id: string): Promise<ScanResponse> =>
+    apiFetch<ScanResponse>(`/api/v1/scans/${id}`),
+
+  getScanHistory: (limit = 20, offset = 0): Promise<HistoryResponse> =>
     apiFetch<HistoryResponse>(`/api/v1/scans/history?limit=${limit}&offset=${offset}`),
 
-  // Grad-CAM - Using safeFetch to ensure network errors are caught
+  // ── Grad-CAM ─────────────────────────────────────────────────────────────
   getGradcam: async (blob: Blob): Promise<GradcamResponse> => {
     const form = new FormData();
     form.append('image', blob, 'gradcam_input.jpg');
@@ -129,5 +172,6 @@ export const api = {
     return validRes.json() as Promise<GradcamResponse>;
   },
 
-  getMarkets: (): Promise<MarketsResponse> => apiFetch<MarketsResponse>('/api/v1/maps/markets'),
+  getMarkets: (): Promise<MarketsResponse> =>
+    apiFetch<MarketsResponse>('/api/v1/maps/markets'),
 };
