@@ -4,7 +4,8 @@ Endpoint: GET /api/v1/maps/markets/live?lat=...&lng=...&radius=5000
 """
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+import math
+from fastapi import APIRouter, Query
 
 router = APIRouter(prefix="/api/v1/maps/markets", tags=["markets"])
 
@@ -25,7 +26,8 @@ out body;
 def _lat_lng_to_bbox(lat: float, lng: float, radius_m: float):
     """Convert center + radius to bounding box (south, west, north, east)."""
     delta_lat = radius_m / 111320
-    delta_lng = radius_m / (111320 * abs(__import__('math').cos(__import__('math').radians(lat))) + 1e-9)
+    import math
+    delta_lng = radius_m / (111320 * abs(math.cos(math.radians(lat))) + 1e-9)
     return {
         "south": lat - delta_lat,
         "west": lng - delta_lng,
