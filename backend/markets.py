@@ -76,14 +76,17 @@ async def get_live_markets(
     query = OVERPASS_QUERY_TEMPLATE.format(**bbox)
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(
-                OVERPASS_URL,
-                data={"data": query},
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-            response.raise_for_status()
-            data = response.json()
+     async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+        OVERPASS_URL,
+        data={"data": query},
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "FreshScanAI/1.0 (https://github.com/jpdevhub/FreshScanAi)",
+        },
+    )
+        response.raise_for_status()
+        data = response.json()
 
         elements = data.get("elements", [])
         markets = _parse_overpass(elements)
