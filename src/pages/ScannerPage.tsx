@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import StatusTerminal from '../components/StatusTerminal';
 import { api, isAuthenticated } from '../lib/api';
-// @ts-ignore
 import { FishFreshnessInference } from '../fusionInference.js';
 
 // ─────────────────────────────────────────────────────────────────────────────

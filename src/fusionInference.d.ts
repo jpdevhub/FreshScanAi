@@ -1,7 +1,38 @@
+export interface StreamAResult {
+  logits: number[];
+  probs: number[];
+  prediction: { label: string; confidence: number; index: number };
+}
+
+export interface StreamBResult {
+  logits: number[];
+  freshScore: number;
+  probs: number[];
+}
+
+export interface FusionResult {
+  label: 'Fresh' | 'Moderate' | 'Spoiled';
+  fusedScore: number;
+  confidence: string;
+  streamA: StreamAResult;
+  streamB_eye: StreamBResult;
+  streamB_gill: StreamBResult;
+}
+
+export interface SmokeTestResult {
+  r1: FusionResult;
+  r2: FusionResult;
+  r3: FusionResult;
+}
+
 export class FishFreshnessInference {
   constructor(modelPaths?: { streamA?: string; streamB?: string });
   loadModels(): Promise<void>;
-  predict(body: HTMLImageElement, eye: HTMLImageElement, gill: HTMLImageElement): Promise<any>;
+  predict(
+    body: HTMLImageElement | HTMLCanvasElement | ImageBitmap,
+    eye: HTMLImageElement | HTMLCanvasElement | ImageBitmap,
+    gill: HTMLImageElement | HTMLCanvasElement | ImageBitmap,
+  ): Promise<FusionResult>;
   dispose(): Promise<void>;
 }
 
@@ -10,6 +41,6 @@ export function fuseFromLogits(
   eyeLogitsB: number[],
   gillLogitsB: number[],
   opts?: { tempA?: number; tempB?: number }
-): any;
+): FusionResult;
 
-export function smokeTest(): any;
+export function smokeTest(): SmokeTestResult;
