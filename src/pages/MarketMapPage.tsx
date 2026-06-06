@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -101,9 +102,17 @@ export default function MarketMapPage() {
           ]}
           className="mb-3"
         />
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-display">
-          Market Trust <span className="text-neon">Map</span>
-        </h1>
+        <div className="flex items-end justify-between gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-display">
+            Market Trust <span className="text-neon">Map</span>
+          </h1>
+          <Link
+            to="/leaderboard"
+            className="text-[0.65rem] sm:text-xs font-mono tracking-widest text-on-surface hover:text-neon flex items-center border border-outline-variant/30 px-2 py-1 sm:px-3 sm:py-1.5 bg-surface-lowest transition-colors no-underline whitespace-nowrap"
+          >
+            LEADERBOARD
+          </Link>
+        </div>
       </div>
 
       {/* Map */}

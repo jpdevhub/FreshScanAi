@@ -8,6 +8,7 @@ import ScannerPage from './pages/ScannerPage';
 import AnalysisDashboard from './pages/AnalysisDashboard';
 import MarketMapPage from './pages/MarketMapPage';
 import ResultsPage from './pages/ResultsPage';
+import Leaderboard from './pages/Leaderboard';
 import PostHogPageView from './components/PostHogPageView';
 import NotFound from './pages/NotFound';
 
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/scanner" element={<ScannerPage />} />
           <Route path="/analysis" element={<AnalysisDashboard />} />
           <Route path="/map" element={<MarketMapPage />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/results" element={<ResultsPage />} />
           
           {/* Catch-all route for broken links/404s */}
