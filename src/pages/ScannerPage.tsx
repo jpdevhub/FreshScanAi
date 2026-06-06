@@ -137,7 +137,7 @@ export default function ScannerPage() {
   const [flashOn,    setFlashOn]    = useState(false);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [cameraActive, setCameraActive] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const [copied,       setCopied]       = useState(false);
 
   // Preview URLs for the three captured frames (body, eye, gill)
   const [previewBody, setPreviewBody] = useState<string | null>(null);
@@ -341,6 +341,10 @@ export default function ScannerPage() {
   const scanComplete = scanPhase === 'done';
   const isCapturing  = ['idle', 'body_captured', 'eye_captured'].includes(scanPhase);
   const phaseMeta    = PHASE_META[scanPhase] ?? PHASE_META['processing'];
+
+  // Map ONNX fused score (0–1) to a 0–100 integer — compatible with the
+  // Grade-A shareable report feature that expects `freshness >= 85`.
+  const freshness = result ? Math.round(result.fusedScore * 100) : null;
 
   // Step indicator: which step are we on (1, 2, 3)
   const stepIndex = { idle: 1, body_captured: 2, eye_captured: 3 }[scanPhase as string] ?? 0;
@@ -641,23 +645,26 @@ export default function ScannerPage() {
                 </button>
               </div>
             )}
-             {scanComplete && freshness !== null && freshness >= 85 && (
-               <div className="flex flex-col gap-3 mt-1">
-                 <button
-                   onClick={() => {
-                     const scanId = sessionStorage.getItem('lastScanId');
-                     if (scanId) {
-                       navigator.clipboard.writeText(`${window.location.origin}/report/${scanId}`);
-                       setCopied(true);
-                       setTimeout(() => setCopied(false), 2000);
-                     }
-                   }}
-                   className="w-full py-3 bg-secondary text-on-primary font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer border-none transition-colors hover:brightness-110 flex items-center justify-center gap-2"
-                 >
-                   {copied ? 'COPIED TO CLIPBOARD' : 'SHARE GRADE-A REPORT'}
-                 </button>
-               </div>
-             )}
+
+            {/* Grade-A shareable report */}
+            {scanComplete && freshness !== null && freshness >= 85 && (
+              <div className="flex flex-col gap-3 mt-1 mb-4">
+                <button
+                  onClick={() => {
+                    const scanId = sessionStorage.getItem('lastScanId');
+                    if (scanId) {
+                      navigator.clipboard.writeText(`${window.location.origin}/report/${scanId}`);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }
+                  }}
+                  className="w-full py-3 bg-secondary text-on-primary font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer border-none transition-colors hover:brightness-110 flex items-center justify-center gap-2"
+                >
+                  {copied ? 'COPIED TO CLIPBOARD' : 'SHARE GRADE-A REPORT'}
+                </button>
+              </div>
+            )}
+
             <StatusTerminal
               messages={['MODEL: EDGE_ONNX', 'DEVICE: ON_DEVICE', 'LATENCY: <50ms']}
               className="justify-center"
