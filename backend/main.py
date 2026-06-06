@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional
 
+
 # Load .env file if present (python-dotenv)
 try:
     from dotenv import load_dotenv
@@ -90,6 +91,7 @@ async def lifespan(app: FastAPI):
         )
     yield
 
+from fastapi import FastAPI
 
 app = FastAPI(title="FreshScan AI", version="1.1.0", lifespan=lifespan)
 
@@ -110,6 +112,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Health check ──────────────────────────────────────────────────────────────
+# HF Spaces polls GET /?logs=container — without this route, FastAPI returns
+# 404 and HF Spaces may mark the container as unhealthy.
+
+@app.get("/")
+async def health_check():
+    return {
+        "status": "healthy",
+        "service": "FreshScan AI",
+        "version": "1.1.0",
+        "models_loaded": _models_loaded,
+    }
 
 
 # ── Domain helpers ────────────────────────────────────────────────────────────
@@ -158,15 +174,27 @@ def _body_detail(s: int) -> str:
 
 
 def _derive_grade(score: float) -> str:
+    # 1. Type validation checking: Reject anything that isn't an integer or float
+    if not isinstance(score, (int, float)) or isinstance(score, bool):
+        raise ValueError(
+            f"Invalid input type: {type(score)}. Score must be a numeric float/int."
+        )
+
+    # 2. Scale boundaries validation: Must reside strictly between 0.0 and 100.0 inclusive
+    if score < 0 or score > 100:
+        raise ValueError(f"Score {score} is out of valid scale range (0.0 - 100.0).")
+
+    # 3. Proceed safely with the evaluation hierarchy
     if score >= 92:
         return "A+"
-    if score >= 80:
+    elif score >= 80:
         return "A"
-    if score >= 65:
+    elif score >= 65:
         return "B"
-    if score >= 50:
+    elif score >= 50:
         return "C"
-    return "D"
+    else:
+        return "D"
 
 
 def _to_db_grade(grade: str) -> str:
@@ -353,6 +381,23 @@ async def get_me(current_user=Depends(get_current_user)):
             or current_user.user_metadata.get("picture")
         ),
     }
+
+
+@app.get("/api/v1/public/report/{scan_id}")
+async def get_public_report(scan_id: str):
+    try:
+        resp = _db().table("scans").select("*").eq("id", scan_id).execute()
+        if not resp.data:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        return {"success": True, "scan": resp.data[0]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+# ── MAIN ──────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 
 
 # ── SCAN ──────────────────────────────────────────────────────────────────────

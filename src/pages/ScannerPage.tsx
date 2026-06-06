@@ -3,126 +3,250 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, Zap, RotateCcw, FlashlightOff, Flashlight, SwitchCamera, Upload } from 'lucide-react';
 import StatusTerminal from '../components/StatusTerminal';
 import { api, isAuthenticated } from '../lib/api';
+import { FishFreshnessInference } from '../fusionInference.js';
+import type { ScanResult } from '../lib/types';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+type ScanPhase = 'idle' | 'processing' | 'done' | 'error';
+type InferenceMode = 'cloud' | 'edge' | null;
+
+/** Normalised result — maps both HF backend and ONNX outputs to one shape. */
+interface DisplayResult {
+  label:     'Fresh' | 'Moderate' | 'Spoiled';
+  freshness: number;         // 0–100 integer
+  grade:     string;         // A+, A, B, C, D (cloud) or derived (edge)
+  confidence: string;        // formatted percentage string
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Grade derivation (mirrors backend _derive_grade)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function deriveGrade(freshness: number): string {
+  if (freshness >= 92) return 'A+';
+  if (freshness >= 80) return 'A';
+  if (freshness >= 65) return 'B';
+  if (freshness >= 50) return 'C';
+  return 'D';
+}
+
+function labelColor(label: string) {
+  if (label === 'Fresh')    return 'text-neon';
+  if (label === 'Moderate') return 'text-secondary';
+  return 'text-error';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Singleton ONNX engine (pre-warmed on mount)
+// ─────────────────────────────────────────────────────────────────────────────
+
+let engineInstance: FishFreshnessInference | null = null;
+let engineReady = false;
+let engineLoading = false;
+
+async function getEngine(): Promise<FishFreshnessInference> {
+  if (engineReady && engineInstance) return engineInstance;
+  if (engineLoading) {
+    await new Promise<void>(resolve => {
+      const poll = setInterval(() => {
+        if (engineReady) { clearInterval(poll); resolve(); }
+      }, 100);
+    });
+    return engineInstance!;
+  }
+  engineLoading = true;
+  engineInstance = new FishFreshnessInference();
+  await engineInstance.loadModels();
+  engineReady = true;
+  engineLoading = false;
+  return engineInstance;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function captureVideoBlob(video: HTMLVideoElement): Promise<Blob | null> {
+  const canvas = document.createElement('canvas');
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  canvas.getContext('2d')?.drawImage(video, 0, 0);
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+}
+
+async function blobToImageElement(blob: Blob): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload  = () => resolve(img);
+    img.onerror = reject;
+    img.src = URL.createObjectURL(blob);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function ScannerPage() {
   const navigate = useNavigate();
 
-  const [scanPhase, setScanPhase] = useState<'idle' | 'capturing' | 'processing' | 'done' | 'error'>('idle');
-  const [progress, setProgress]   = useState(0);
-  const [freshness, setFreshness] = useState<number | null>(null);
-  const [error, setError]         = useState('');
-  const [flashOn, setFlashOn]     = useState(false);
-  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
-  const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
-  // Controls whether the camera stream is active
-  const [cameraActive, setCameraActive] = useState(true);
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [scanPhase,     setScanPhase]     = useState<ScanPhase>('idle');
+  const [inferenceMode, setInferenceMode] = useState<InferenceMode>(null);
+  const [result,        setResult]        = useState<DisplayResult | null>(null);
+  const [error,         setError]         = useState('');
+  const [flashOn,       setFlashOn]       = useState(false);
+  const [facingMode,    setFacingMode]    = useState<'environment' | 'user'>('environment');
+  const [progress,      setProgress]      = useState(0);
+  const [copied,        setCopied]        = useState(false);
+  const [previewUrl,    setPreviewUrl]    = useState<string | null>(null);
 
-  const videoRef      = useRef<HTMLVideoElement>(null);
-  const progressRef   = useRef<ReturnType<typeof setInterval> | null>(null);
-  const fileInputRef  = useRef<HTMLInputElement>(null);
-  const streamRef     = useRef<MediaStream | null>(null);
+  const videoRef     = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const progressRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamRef    = useRef<MediaStream | null>(null);
 
-  // ── Camera stream — only runs when cameraActive and no upload preview ────
+  // ── Pre-warm ONNX engine on mount (runs in background) ────────────────────
+  useEffect(() => { getEngine().catch(console.error); }, []);
+
+  // ── Camera stream ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!cameraActive || uploadPreviewUrl) return;
-
+    if (scanPhase !== 'idle') return;
     let cancelled = false;
     const currentVideo = videoRef.current;
 
-    async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+    navigator.mediaDevices.getUserMedia({ video: { facingMode } })
+      .then(stream => {
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = stream;
         if (currentVideo) currentVideo.srcObject = stream;
-      } catch (err) {
-        if (!cancelled) console.error('Camera error:', err);
-      }
-    }
+      })
+      .catch(err => { if (!cancelled) console.error('Camera error:', err); });
 
-    startCamera();
     return () => {
       cancelled = true;
       streamRef.current?.getTracks().forEach(t => t.stop());
       streamRef.current = null;
       if (currentVideo) currentVideo.srcObject = null;
     };
-  }, [facingMode, cameraActive, uploadPreviewUrl]);
+  }, [facingMode, scanPhase]);
 
-  // ── Progress bar ───────────────────────────────────────────────────────────
-  const startProgressBar = useCallback(() => {
+  // ── Progress bar animation ─────────────────────────────────────────────────
+  const startProgress = useCallback(() => {
     setProgress(0);
     progressRef.current = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 90) return prev;
-        return prev + Math.random() * 4 + 1;
-      });
-    }, 100);
+      setProgress(prev => prev >= 90 ? prev : prev + Math.random() * 5 + 1);
+    }, 120);
   }, []);
 
-  const stopProgressBar = useCallback((final: number) => {
+  const stopProgress = useCallback((final: number) => {
     if (progressRef.current) clearInterval(progressRef.current);
     setProgress(final);
   }, []);
 
-  // ── Shared: submit blob to API then navigate ───────────────────────────────
-  const submitAndNavigate = useCallback(async (blob: Blob) => {
-    setScanPhase('processing');
-    startProgressBar();
-
-    try {
-      const result = await api.submitScan(blob);
-      stopProgressBar(100);
-      sessionStorage.setItem('lastScanId', result.scan.scan_id);
-      setFreshness(result.scan.freshness_index);
-      setScanPhase('done');
-      // Auto-navigate to analysis after a short "done" flash
-      setTimeout(() => navigate('/analysis'), 1200);
-    } catch (err) {
-      stopProgressBar(0);
-      const msg = err instanceof Error ? err.message : 'Scan failed.';
-      setError(msg);
-      setScanPhase('error');
-      // Restart camera & clear preview so user can try again immediately
-      setUploadPreviewUrl(null);
-      setCameraActive(true);
-    }
-  }, [startProgressBar, stopProgressBar, navigate]);
-
-  // ── Camera scan ────────────────────────────────────────────────────────────
-  const captureFrame = useCallback((): Promise<Blob | null> => {
-    return new Promise(resolve => {
-      const video = videoRef.current;
-      if (!video) return resolve(null);
-      const canvas = document.createElement('canvas');
-      canvas.width  = video.videoWidth  || 640;
-      canvas.height = video.videoHeight || 480;
-      canvas.getContext('2d')?.drawImage(video, 0, 0);
-      canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.92);
-    });
-  }, []);
-
-  const startScan = useCallback(async () => {
-    if (!isAuthenticated()) { navigate('/auth'); return; }
-    setScanPhase('capturing');
-    setError('');
-
-    // Stop camera immediately after capture — restarts on reset
-    const blob = await captureFrame();
+  // ── Stop camera ────────────────────────────────────────────────────────────
+  const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
-    setCameraActive(false);
-    if (!blob) {
-      setError('Failed to capture camera frame.');
-      setScanPhase('error');
-      setCameraActive(true); // restart camera so user can try again
-      return;
-    }
-    await submitAndNavigate(blob);
-  }, [captureFrame, submitAndNavigate, navigate]);
+  }, []);
 
-  // ── Photo upload ───────────────────────────────────────────────────────────
+  // ── Core: run hybrid inference on a single blob ────────────────────────────
+  const runScan = useCallback(async (blob: Blob) => {
+    setScanPhase('processing');
+    startProgress();
+    setError('');
+    setInferenceMode(null);
+
+    // Store preview
+    const url = URL.createObjectURL(blob);
+    setPreviewUrl(url);
+    stopCamera();
+
+    try {
+      // ── Path A: online — try HF backend first ─────────────────────────────
+      const online = await api.scanOnline(blob);
+
+      if (online) {
+        // Cloud inference succeeded — use typed ScanResult fields directly
+        const s: ScanResult = online.scan;
+        const freshness = s.freshness_index;
+        stopProgress(100);
+        setInferenceMode('cloud');
+        setResult({
+          label:      s.is_fresh ? (freshness >= 80 ? 'Fresh' : 'Moderate') : 'Spoiled',
+          freshness,
+          grade:      s.grade,
+          confidence: `${Math.round((s.confidence ?? 0.9) * 100)}%`,
+        });
+
+        if (s.scan_id) {
+          sessionStorage.setItem('lastScanId', s.scan_id);
+        }
+        setScanPhase('done');
+        setTimeout(() => navigate('/analysis'), 1800);
+        return;
+      }
+
+      // ── Path B: offline — fall back to ONNX ───────────────────────────────
+      setInferenceMode('edge');
+      const imgEl = await blobToImageElement(blob);
+      const engine = await getEngine();
+      const fusion = await engine.predictSingle(imgEl);
+
+      stopProgress(100);
+      const freshness = Math.round(fusion.fusedScore * 100);
+      setResult({
+        label:      fusion.label,
+        freshness,
+        grade:      deriveGrade(freshness),
+        confidence: fusion.confidence,
+      });
+      setScanPhase('done');
+
+      // Best-effort backend save (non-blocking, offline-safe)
+      const canvas = document.createElement('canvas');
+      canvas.width = 224; canvas.height = 224;
+      canvas.getContext('2d')?.drawImage(imgEl, 0, 0, 224, 224);
+      canvas.toBlob(async saveBlob => {
+        if (!saveBlob) return;
+        try {
+          const saved = await api.submitScan(saveBlob, {
+            freshness_label: fusion.label,
+            fused_score:     fusion.fusedScore,
+            source:          'edge_onnx',
+          });
+          if ((saved?.scan as unknown as { scan_id?: string })?.scan_id) {
+            sessionStorage.setItem('lastScanId', (saved.scan as unknown as { scan_id: string }).scan_id);
+          }
+        } catch { /* offline or backend down — result still shown locally */ }
+      }, 'image/jpeg', 0.85);
+
+      setTimeout(() => navigate('/analysis'), 1800);
+
+    } catch (err) {
+      stopProgress(0);
+      const msg = err instanceof Error ? err.message : 'Inference failed.';
+      const isNotFish = msg.includes('NOT_A_FISH') || msg.includes('not appear to contain a fish');
+      setError(isNotFish ? 'NOT_A_FISH: No fish detected. Please photograph a fish.' : msg);
+      setScanPhase('error');
+    }
+  }, [startProgress, stopProgress, stopCamera, navigate]);
+
+  // ── Camera capture ─────────────────────────────────────────────────────────
+  const captureFrame = useCallback(async () => {
+    if (!isAuthenticated()) { navigate('/auth'); return; }
+    const video = videoRef.current;
+    if (!video) return;
+    const blob = await captureVideoBlob(video);
+    if (!blob) { setError('Failed to capture frame.'); return; }
+    await runScan(blob);
+  }, [runScan, navigate]);
+
+  // ── File upload ────────────────────────────────────────────────────────────
   const handleUploadClick = useCallback(() => {
     if (!isAuthenticated()) { navigate('/auth'); return; }
     fileInputRef.current?.click();
@@ -131,59 +255,55 @@ export default function ScannerPage() {
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    await runScan(file);
+  }, [runScan]);
 
-    // Show preview & stop camera
-    const url = URL.createObjectURL(file);
-    setUploadPreviewUrl(url);
-    setError('');
-
-    await submitAndNavigate(file);
-
-    // Cleanup object URL after use
-    URL.revokeObjectURL(url);
-  }, [submitAndNavigate]);
-
+  // ── Reset ──────────────────────────────────────────────────────────────────
   const resetScan = useCallback(() => {
     setScanPhase('idle');
-    setProgress(0);
-    setFreshness(null);
+    setResult(null);
     setError('');
-    setUploadPreviewUrl(null);
-    setCameraActive(true);          // restart camera on reset
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, []);
+    setInferenceMode(null);
+    setProgress(0);
+    if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }
+  }, [previewUrl]);
 
   const toggleCamera = useCallback(() => {
-    setFacingMode(prev => (prev === 'environment' ? 'user' : 'environment'));
+    setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
   }, []);
 
-  const isScanning   = scanPhase === 'capturing' || scanPhase === 'processing';
+  // ── Derived ────────────────────────────────────────────────────────────────
+  const isScanning   = scanPhase === 'processing';
   const scanComplete = scanPhase === 'done';
+  const freshness    = result?.freshness ?? null;
 
   const terminalMessages = (() => {
-    if (scanPhase === 'capturing')  return ['SCAN_SEQ: ACTIVE', 'CAPTURING_FRAME'];
-    if (scanPhase === 'processing') return ['SCAN_SEQ: ACTIVE', `PROGRESS: ${Math.min(Math.round(progress), 100)}%`];
-    if (scanComplete)               return ['SCAN_SEQ: COMPLETE', `FRESHNESS: ${freshness}`];
-    if (scanPhase === 'error')      return ['SCAN_SEQ: FAILED', 'CHECK_SPECIMEN'];
-    return ['SCAN_SEQ: STANDBY', 'AWAITING_INPUT'];
+    if (isScanning && inferenceMode === 'edge')  return ['MODE: EDGE_ONNX', 'RUNNING_LOCAL_INFERENCE...'];
+    if (isScanning && inferenceMode === 'cloud') return ['MODE: CLOUD_API', 'CONNECTING_TO_HF...'];
+    if (isScanning)                              return ['DETECTING_MODEL...', 'PLEASE_WAIT'];
+    if (scanComplete && inferenceMode === 'edge')  return ['MODEL: EDGE_ONNX', 'DEVICE: ON_DEVICE', 'LATENCY: <50ms'];
+    if (scanComplete && inferenceMode === 'cloud') return ['MODEL: CLOUD_API', 'DEVICE: HF_INFERENCE'];
+    if (scanPhase === 'error')                   return ['SCAN_SEQ: FAILED', 'CHECK_SPECIMEN'];
+    return ['SYSTEM: READY', 'POINT_CAMERA_AT_FISH'];
   })();
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col">
       <div className="relative flex-1 flex flex-col">
 
-        {/* Camera / Upload preview viewport */}
+        {/* ── Viewport ──────────────────────────────────────────────────── */}
         <div className="relative flex-1 bg-surface-lowest flex items-center justify-center min-h-[60vh] overflow-hidden">
 
-          {uploadPreviewUrl ? (
-            /* Uploaded image preview */
+          {/* Preview or live camera */}
+          {previewUrl && !isScanning ? (
             <img
-              src={uploadPreviewUrl}
-              alt="Upload preview"
+              src={previewUrl}
+              alt="Captured"
               className="absolute inset-0 w-full h-full object-contain z-0 bg-surface-lowest"
             />
           ) : (
-            /* Live camera feed */
             <video
               ref={videoRef}
               autoPlay
@@ -198,8 +318,8 @@ export default function ScannerPage() {
             className="absolute inset-0 opacity-[0.2] mix-blend-screen pointer-events-none z-10"
             style={{
               backgroundImage: `
-                linear-gradient(rgba(195, 244, 0, 0.3) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(195, 244, 0, 0.3) 1px, transparent 1px)
+                linear-gradient(rgba(195,244,0,0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(195,244,0,0.3) 1px, transparent 1px)
               `,
               backgroundSize: '40px 40px',
             }}
@@ -219,49 +339,56 @@ export default function ScannerPage() {
             )}
 
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-              {scanPhase === 'idle' && !uploadPreviewUrl && (
+              {scanPhase === 'idle' && (
                 <>
-                  <Camera size={32} className="text-on-surface-variant" />
                   <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-on-surface-variant">
-                    POSITION_SPECIMEN
+                    POINT_AT_FISH
                   </span>
                 </>
-              )}
-              {scanPhase === 'idle' && uploadPreviewUrl && (
-                <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-neon">
-                  IMAGE_LOADED
-                </span>
               )}
               {isScanning && (
                 <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-neon data-stream">
                   ANALYZING_BIOMARKERS
                 </span>
               )}
-              {scanComplete && freshness !== null && (
+              {scanComplete && result && (
                 <div className="text-center animate-in">
-                  <span className="font-[family-name:var(--font-display)] text-5xl font-bold text-neon block">
-                    {freshness}
+                  <span className={`font-[family-name:var(--font-display)] text-4xl font-bold block ${labelColor(result.label)}`}>
+                    {result.label.toUpperCase()}
                   </span>
-                  <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-secondary">
-                    FRESHNESS_INDEX
+                  <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-secondary block mt-1">
+                    {result.confidence} · GRADE {result.grade}
                   </span>
                 </div>
               )}
               {scanPhase === 'error' && (
-                <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-error text-center px-4">
-                  {error || 'SCAN_FAILED'}
+                <span className="font-[family-name:var(--font-mono)] text-[0.55rem] tracking-widest text-error text-center px-6">
+                  {error}
                 </span>
               )}
             </div>
           </div>
 
-          {/* Status top-left */}
+          {/* Status terminal — top-left */}
           <div className="absolute top-4 left-4 z-20 pointer-events-none">
             <StatusTerminal messages={terminalMessages} />
           </div>
 
-          {/* Camera controls top-right — hide when showing upload preview */}
-          {!uploadPreviewUrl && (
+          {/* Mode badge — top-right */}
+          {inferenceMode && (
+            <div className="absolute top-4 right-4 z-20">
+              <span className={`font-[family-name:var(--font-mono)] text-[0.45rem] tracking-widest px-2 py-1 border ${
+                inferenceMode === 'edge'
+                  ? 'border-neon text-neon bg-neon/10'
+                  : 'border-secondary text-secondary bg-secondary/10'
+              }`}>
+                {inferenceMode === 'edge' ? 'EDGE_ONNX' : 'CLOUD_API'}
+              </span>
+            </div>
+          )}
+
+          {/* Flash toggle — only in idle */}
+          {scanPhase === 'idle' && (
             <div className="absolute top-4 right-4 flex gap-2 z-20">
               <button
                 onClick={() => setFlashOn(!flashOn)}
@@ -281,51 +408,40 @@ export default function ScannerPage() {
           />
         </div>
 
-        {/* Controls panel */}
+        {/* ── Controls panel ────────────────────────────────────────────── */}
         <div className="bg-surface-low px-6 py-6">
           <div className="max-w-lg mx-auto">
 
-            {!scanComplete ? (
+            {/* Idle: capture buttons */}
+            {scanPhase === 'idle' && (
               <div className="flex flex-col gap-3 mb-4">
-                {/* Row 1: INITIATE_SCAN + camera toggle */}
                 <div className="flex gap-3">
                   <button
-                    onClick={startScan}
-                    disabled={isScanning || !!uploadPreviewUrl}
-                    className={`flex-1 py-4 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer transition-all duration-200 border-none flex items-center justify-center gap-3 ${
-                      isScanning || uploadPreviewUrl
-                        ? 'bg-surface-high text-on-surface-variant cursor-not-allowed opacity-50'
-                        : 'bg-neon text-on-primary hover:bg-neon-dim pulse-glow'
-                    }`}
+                    id="capture-btn"
+                    onClick={captureFrame}
+                    className="flex-1 py-4 bg-neon text-on-primary font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer border-none flex items-center justify-center gap-3 hover:bg-neon-dim pulse-glow transition-all duration-200"
                   >
-                    <Zap size={18} />
-                    {isScanning ? 'PROCESSING...' : 'INITIATE_SCAN'}
+                    <Camera size={18} />
+                    CAPTURE_FISH
                   </button>
                   <button
                     onClick={toggleCamera}
-                    disabled={isScanning || !!uploadPreviewUrl}
-                    className="w-14 bg-surface-high flex items-center justify-center text-on-surface-variant hover:text-neon transition-colors cursor-pointer border-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Switch Camera"
+                    className="w-14 bg-surface-high flex items-center justify-center text-on-surface-variant hover:text-neon transition-colors cursor-pointer border-none"
+                    aria-label="Switch camera"
                   >
                     <SwitchCamera size={18} />
                   </button>
                 </div>
 
-                {/* Row 2: UPLOAD_PHOTO */}
                 <button
+                  id="upload-btn"
                   onClick={handleUploadClick}
-                  disabled={isScanning}
-                  className={`w-full py-3 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer transition-all duration-200 border border-on-surface-variant/30 flex items-center justify-center gap-3 ${
-                    isScanning
-                      ? 'bg-surface-mid text-on-surface-variant cursor-not-allowed opacity-50'
-                      : 'bg-surface-mid text-on-surface hover:border-neon hover:text-neon'
-                  }`}
+                  className="w-full py-3 bg-surface-mid text-on-surface font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer border border-on-surface-variant/30 hover:border-neon hover:text-neon flex items-center justify-center gap-3 transition-all duration-200"
                 >
                   <Upload size={16} />
                   UPLOAD_PHOTO
                 </button>
 
-                {/* Hidden file input */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -334,17 +450,82 @@ export default function ScannerPage() {
                   onChange={handleFileChange}
                 />
               </div>
-            ) : (
-              <div className="flex gap-3 w-full mb-4">
-                <button
-                  onClick={() => navigate('/analysis')}
-                  className="flex-1 bg-neon text-on-primary py-4 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider text-center transition-all duration-200 hover:bg-neon-dim border-none cursor-pointer"
-                >
-                  VIEW_ANALYSIS
-                </button>
+            )}
+
+            {/* Processing state */}
+            {isScanning && (
+              <div className="flex items-center justify-center py-4 mb-4 gap-3">
+                <Zap size={18} className="text-neon animate-pulse" />
+                <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-neon">
+                  {inferenceMode === 'edge' ? 'RUNNING_EDGE_INFERENCE...' : 'RUNNING_CLOUD_INFERENCE...'}
+                </span>
+              </div>
+            )}
+
+            {/* Done: result + actions */}
+            {scanComplete && result && (
+              <div className="flex flex-col gap-3 mb-4">
+                {/* Freshness score bar */}
+                <div className="bg-surface-mid border border-on-surface-variant/20 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-[family-name:var(--font-mono)] text-[0.55rem] tracking-widest text-on-surface-variant">
+                      FRESHNESS_INDEX
+                    </span>
+                    <span className={`font-[family-name:var(--font-display)] text-lg font-bold ${labelColor(result.label)}`}>
+                      {result.freshness}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-surface-high">
+                    <div
+                      className={`h-full transition-all duration-700 ${result.freshness >= 65 ? 'bg-neon' : result.freshness >= 35 ? 'bg-secondary' : 'bg-error'}`}
+                      style={{ width: `${result.freshness}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => navigate('/analysis')}
+                    className="flex-1 py-3 bg-neon text-on-primary font-[family-name:var(--font-display)] font-bold text-xs tracking-wider border-none cursor-pointer flex items-center justify-center hover:bg-neon-dim transition-all duration-200"
+                  >
+                    VIEW_ANALYSIS
+                  </button>
+                  <button
+                    onClick={resetScan}
+                    className="w-14 bg-surface-high flex items-center justify-center text-on-surface-variant hover:text-neon transition-colors cursor-pointer border-none"
+                  >
+                    <RotateCcw size={18} />
+                  </button>
+                </div>
+
+                {/* Grade-A shareable report — only when backend scan ID available */}
+                {freshness !== null && freshness >= 85 && (
+                  <button
+                    onClick={() => {
+                      const scanId = sessionStorage.getItem('lastScanId');
+                      if (scanId) {
+                        navigator.clipboard.writeText(`${window.location.origin}/report/${scanId}`);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }
+                    }}
+                    className="w-full py-3 bg-secondary text-on-primary font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer border-none transition-colors hover:brightness-110 flex items-center justify-center gap-2"
+                  >
+                    {copied ? 'COPIED TO CLIPBOARD' : 'SHARE GRADE-A REPORT'}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Error state */}
+            {scanPhase === 'error' && (
+              <div className="flex gap-3 mb-4">
+                <span className="flex-1 font-[family-name:var(--font-mono)] text-[0.55rem] tracking-widest text-error self-center">
+                  {error}
+                </span>
                 <button
                   onClick={resetScan}
-                  className="w-14 bg-surface-high flex items-center justify-center text-on-surface-variant hover:text-neon transition-colors cursor-pointer border-none"
+                  className="w-14 h-10 bg-surface-high flex items-center justify-center text-on-surface-variant hover:text-neon transition-colors cursor-pointer border-none"
                 >
                   <RotateCcw size={18} />
                 </button>
@@ -352,7 +533,7 @@ export default function ScannerPage() {
             )}
 
             <StatusTerminal
-              messages={['MODEL: STREAM_DUAL', 'DEVICE: ON_EDGE', 'LATENCY: <50ms']}
+              messages={terminalMessages}
               className="justify-center"
             />
           </div>

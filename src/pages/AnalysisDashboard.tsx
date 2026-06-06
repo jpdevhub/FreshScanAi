@@ -7,32 +7,32 @@ import { api } from '../lib/api';
 import type { ScanResult } from '../lib/types';
 
 const BIOMARKER_META = {
-  gill_saturation:   { label: 'Gill Saturation',   icon: Droplets },
-  corneal_clarity:   { label: 'Corneal Clarity',    icon: EyeIcon  },
-  epidermal_tension: { label: 'Epidermal Tension',  icon: Fish     },
+  gill_saturation: { label: 'Gill Saturation', icon: Droplets },
+  corneal_clarity: { label: 'Corneal Clarity', icon: EyeIcon },
+  epidermal_tension: { label: 'Epidermal Tension', icon: Fish },
 } as const;
 
 type BiomarkerKey = keyof typeof BIOMARKER_META;
 
 function gradeColor(grade: string) {
   if (grade === 'A+' || grade === 'A') return 'text-secondary';
-  if (grade === 'B')                   return 'text-neon';
+  if (grade === 'B') return 'text-neon';
   return 'text-error';
 }
 
 export default function AnalysisDashboard() {
   const [params] = useSearchParams();
-  const [scan, setScan]         = useState<ScanResult | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState('');
+  const [scan, setScan] = useState<ScanResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       setError('');
       try {
-        const idParam  = params.get('id');
-        const lastId   = sessionStorage.getItem('lastScanId');
+        const idParam = params.get('id');
+        const lastId = sessionStorage.getItem('lastScanId');
         const targetId = idParam || lastId;
 
         const res = targetId
@@ -78,7 +78,7 @@ export default function AnalysisDashboard() {
 
   const { freshness_index, grade, confidence, classification, species, biomarkers, recommendations } = scan;
   const displayId = scan.scan_display_id;
-  const alerts    = recommendations.alert_flags;
+  const alerts = recommendations.alert_flags;
 
   return (
     <div className="min-h-[calc(100vh-4rem)] px-6 md:px-16 lg:px-24 py-8 md:py-12">
@@ -107,7 +107,7 @@ export default function AnalysisDashboard() {
           {/* Main score card */}
           <GlassCard className="flex-1 p-8 relative overflow-hidden" variant="tonal">
             <div className="absolute top-4 right-4">
-              <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-neon-text bg-surface-highest px-2 py-1">
+              <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-neon-text dark:text-neon-text text-neon-dark bg-surface-highest px-2 py-1">
                 GRADE_{grade}
               </span>
             </div>
@@ -132,12 +132,22 @@ export default function AnalysisDashboard() {
               />
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] text-secondary tracking-widest">
                 CLASSIFICATION: {classification}
               </span>
+
               <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] text-on-surface-variant tracking-widest">
                 CONFIDENCE: {confidence}%
+              </span>
+
+              <span
+                className={`px-2 py-1 border text-xs font-semibold font-[family-name:var(--font-mono)] tracking-widest ${confidence < 70
+                    ? "text-error"
+                    : "text-neon"
+                  }`}
+              >
+                {confidence < 70 ? "LOW_CONFIDENCE" : "HIGH_CONFIDENCE"}
               </span>
             </div>
           </GlassCard>
@@ -152,7 +162,7 @@ export default function AnalysisDashboard() {
               {species.tags.map(tag => (
                 <span
                   key={tag}
-                  className="bg-surface-highest/40 text-on-surface-variant font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest px-3 py-1.5"
+                  className="bg-surface-highest text-on-surface-variant font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest px-3 py-1.5"
                 >
                   {tag}
                 </span>
@@ -191,7 +201,7 @@ export default function AnalysisDashboard() {
           <div className="space-y-3">
             {(Object.keys(BIOMARKER_META) as BiomarkerKey[]).map(key => {
               const meta = BIOMARKER_META[key];
-              const bm   = biomarkers[key];
+              const bm = biomarkers[key];
               const Icon = meta.icon;
               const isAlert = bm.status === 'CAUTION';
 
@@ -212,7 +222,7 @@ export default function AnalysisDashboard() {
                           {meta.label}
                         </h4>
                         <div className="flex items-center gap-3">
-                          <span className={`font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest ${isAlert ? 'text-error' : 'text-neon-text'}`}>
+                          <span className={`font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest ${isAlert ? 'text-error' : 'text-neon-dark'}`}>
                             {isAlert && <AlertTriangle size={10} className="inline mr-1" />}
                             {bm.status}
                           </span>
