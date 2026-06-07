@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional
 
+
 # Load .env file if present (python-dotenv)
 try:
     from dotenv import load_dotenv
@@ -90,6 +91,7 @@ async def lifespan(app: FastAPI):
         )
     yield
 
+from fastapi import FastAPI
 
 app = FastAPI(title="FreshScan AI", version="1.1.0", lifespan=lifespan)
 
@@ -98,8 +100,16 @@ _cors_origins = (
     if CORS_ALLOW_ALL
     else [
         FRONTEND_URL,
-        # Always allow Vercel preview deployments
-        "https://fresh-scan-ai-sage.vercel.app",
+        # Current production frontend — always allow so a stale FRONTEND_URL
+        # env var doesn't lock out users.
+        "https://fresh-scanai.vercel.app",
+        # Extra comma-separated origins from env (e.g. preview deployments).
+        # ADDITIONAL_CORS_ORIGINS=https://preview.vercel.app,https://staging.example.com
+        *[
+            o.strip()
+            for o in os.environ.get("ADDITIONAL_CORS_ORIGINS", "").split(",")
+            if o.strip()
+        ],
     ]
 )
 
@@ -110,6 +120,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Health check ──────────────────────────────────────────────────────────────
+# HF Spaces polls GET /?logs=container — without this route, FastAPI returns
+# 404 and HF Spaces may mark the container as unhealthy.
+
+@app.get("/")
+async def health_check():
+    return {
+        "status": "healthy",
+        "service": "FreshScan AI",
+        "version": "1.1.0",
+        "models_loaded": _models_loaded,
+    }
 
 
 # ── Domain helpers ────────────────────────────────────────────────────────────
@@ -365,6 +389,23 @@ async def get_me(current_user=Depends(get_current_user)):
             or current_user.user_metadata.get("picture")
         ),
     }
+
+
+@app.get("/api/v1/public/report/{scan_id}")
+async def get_public_report(scan_id: str):
+    try:
+        resp = _db().table("scans").select("*").eq("id", scan_id).execute()
+        if not resp.data:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        return {"success": True, "scan": resp.data[0]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+# ── MAIN ──────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 
 
 # ── SCAN ──────────────────────────────────────────────────────────────────────
@@ -626,6 +667,46 @@ async def get_vendors():
         )
         resp = _db().table("vendors").select(fields).execute()
         return {"success": True, "vendors": resp.data}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/v1/vendors/leaderboard")
+async def get_leaderboard():
+    try:
+        fields = "id, name, address, avg_freshness_score, total_scans"
+        resp = (
+            _db()
+            .table("vendors")
+            .select(fields)
+            .order("avg_freshness_score", desc=True)
+            .limit(10)
+            .execute()
+        )
+
+        leaderboard = []
+        for v in (resp.data or []):
+            score = v.get("avg_freshness_score") or 0
+            if score >= 85:
+                badge = "gold"
+            elif score >= 70:
+                badge = "silver"
+            elif score >= 50:
+                badge = "bronze"
+            else:
+                badge = "unranked"
+
+            leaderboard.append({
+                "id": v["id"],
+                "name": v["name"],
+                "address": v["address"] or "Unknown Location",
+                "avg_freshness_score": score,
+                "total_scans": v.get("total_scans") or 0,
+                "trust_badge": badge,
+                "trend": "stable",
+            })
+
+        return {"success": True, "leaderboard": leaderboard}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 

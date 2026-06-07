@@ -1,31 +1,41 @@
-import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import GlassCard from '../components/GlassCard';
-import StatusTerminal from '../components/StatusTerminal';
-import { api } from '../lib/api';
-import type { Market } from '../lib/types';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import GlassCard from "../components/GlassCard";
+import StatusTerminal from "../components/StatusTerminal";
+import Skeleton from "../components/Skeleton";
+import { api } from "../lib/api";
+import type { Market } from "../lib/types";
 
-const TILE_DARK  = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+const TILE_DARK =
+  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+const TILE_LIGHT =
+  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 
 function getActiveTile() {
-  return document.documentElement.classList.contains('light') ? TILE_LIGHT : TILE_DARK;
+  return document.documentElement.classList.contains("light")
+    ? TILE_LIGHT
+    : TILE_DARK;
 }
 
 function getScoreColor(score: number) {
-  return score >= 85 ? 'text-secondary' : score >= 70 ? 'text-neon' : 'text-error';
+  return score >= 85
+    ? "text-secondary"
+    : score >= 70
+      ? "text-neon"
+      : "text-error";
 }
 
 function getScoreBg(score: number) {
-  return score >= 85 ? 'bg-secondary' : score >= 70 ? 'bg-neon' : 'bg-error';
+  return score >= 85 ? "bg-secondary" : score >= 70 ? "bg-neon" : "bg-error";
 }
 
 const createCustomIcon = (score: number) => {
-  const hex = score >= 85 ? '#b5d25e' : score >= 70 ? '#c3f400' : '#ffb4ab';
+  const hex = score >= 85 ? "#b5d25e" : score >= 70 ? "#c3f400" : "#ffb4ab";
   return L.divIcon({
-    className: 'custom-leaflet-icon bg-transparent',
+    className: "custom-leaflet-icon bg-transparent",
     html: `<div style="
       width:14px;height:14px;
       background-color:${hex};
@@ -42,14 +52,17 @@ const createCustomIcon = (score: number) => {
 export default function MarketMapPage() {
   const [markers, setMarkers] = useState<Market[]>([]);
   const [selected, setSelected] = useState<Market | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [tileUrl, setTileUrl] = useState(getActiveTile);
 
   // Watch for theme class changes on <html> without depending on custom events
   useEffect(() => {
     const observer = new MutationObserver(() => setTileUrl(getActiveTile()));
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
     return () => observer.disconnect();
   }, []);
 
@@ -62,8 +75,10 @@ export default function MarketMapPage() {
         const res = await api.getMarkets();
         setMarkers(res.markets);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load market data.');
-        console.error('Market fetch error:', err);
+        setError(
+          err instanceof Error ? err.message : "Failed to load market data.",
+        );
+        console.error("Market fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -77,15 +92,27 @@ export default function MarketMapPage() {
       <div className="px-6 md:px-16 py-6 bg-surface-low z-20 shadow-md">
         <StatusTerminal
           messages={[
-            'TRUST_MAP',
-            'REGION: KOLKATA',
-            loading ? 'SYNCING_DB...' : error ? 'LOAD_ERROR' : `NODES: ${markers.length}`,
+            "TRUST_MAP",
+            "REGION: KOLKATA",
+            loading
+              ? "SYNCING_DB..."
+              : error
+                ? "LOAD_ERROR"
+                : `NODES: ${markers.length}`,
           ]}
           className="mb-3"
         />
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-[family-name:var(--font-display)]">
-          Market Trust <span className="text-neon">Map</span>
-        </h1>
+        <div className="flex items-end justify-between gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-display">
+            Market Trust <span className="text-neon">Map</span>
+          </h1>
+          <Link
+            to="/leaderboard"
+            className="text-[0.65rem] sm:text-xs font-mono tracking-widest text-on-surface hover:text-neon flex items-center border border-outline-variant/30 px-2 py-1 sm:px-3 sm:py-1.5 bg-surface-lowest transition-colors no-underline whitespace-nowrap"
+          >
+            LEADERBOARD
+          </Link>
+        </div>
       </div>
 
       {/* Map */}
@@ -97,7 +124,7 @@ export default function MarketMapPage() {
           className="w-full h-full z-0"
         >
           <TileLayer url={tileUrl} attribution="&copy; CARTO" />
-          {markers.map(m => (
+          {markers.map((m) => (
             <Marker
               key={m.id}
               position={[m.lat, m.lng]}
@@ -105,11 +132,20 @@ export default function MarketMapPage() {
               eventHandlers={{ click: () => setSelected(m) }}
             >
               <Popup className="brutalist-popup" closeButton={false}>
-                <div className="p-2 font-[family-name:var(--font-mono)]">
-                  <div className="text-[0.65rem] font-bold text-[#e2e2e2] uppercase mb-1">{m.name}</div>
+                <div className="p-2 font-mono">
+                  <div className="text-[0.65rem] font-bold text-[#e2e2e2] uppercase mb-1">
+                    {m.name}
+                  </div>
                   <div
                     className="text-[0.55rem] tracking-widest"
-                    style={{ color: m.score >= 85 ? '#b5d25e' : m.score >= 70 ? '#c3f400' : '#ffb4ab' }}
+                    style={{
+                      color:
+                        m.score >= 85
+                          ? "#b5d25e"
+                          : m.score >= 70
+                            ? "#c3f400"
+                            : "#ffb4ab",
+                    }}
                   >
                     SCORE: {m.score} | VENDORS: {m.vendors}
                   </div>
@@ -123,25 +159,47 @@ export default function MarketMapPage() {
       {/* Bottom panel */}
       <div className="bg-surface-low px-6 md:px-16 py-6 z-20">
         {error && (
-          <p className="text-error font-[family-name:var(--font-mono)] text-xs tracking-widest text-center mb-4">
+          <p className="text-error font-mono text-xs tracking-widest text-center mb-4">
             {error}
           </p>
         )}
 
-        {selected ? (
+        {loading ? (
+          /* SKELETON LOADER STATE */
+          <GlassCard className="p-5" variant="tonal">
+            <div className="flex items-start justify-between mb-3">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-2 w-16" />
+              </div>
+              <div className="text-right space-y-2 flex flex-col items-end">
+                <Skeleton className="h-8 w-12" />
+                <Skeleton className="h-2 w-20" />
+              </div>
+            </div>
+            <div className="h-1.5 w-full bg-surface-highest">
+              <Skeleton className="h-full w-full" />
+            </div>
+          </GlassCard>
+        ) : selected ? (
+          /* SELECTED NODE STATE */
           <GlassCard className="p-5 animate-in" variant="tonal">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h3 className="font-[family-name:var(--font-display)] text-lg font-bold">{selected.name}</h3>
-                <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant">
+                <h3 className="font-display text-lg font-bold">
+                  {selected.name}
+                </h3>
+                <span className="font-mono text-[0.5625rem] tracking-widest text-on-surface-variant">
                   {selected.vendors} VENDORS
                 </span>
               </div>
               <div className="text-right">
-                <span className={`font-[family-name:var(--font-display)] text-3xl font-bold ${getScoreColor(selected.score)}`}>
+                <span
+                  className={`font-display text-3xl font-bold ${getScoreColor(selected.score)}`}
+                >
                   {selected.score}
                 </span>
-                <span className="block font-[family-name:var(--font-mono)] text-[0.5rem] tracking-widest text-on-surface-variant">
+                <span className="block font-mono text-[0.5rem] tracking-widest text-on-surface-variant">
                   AVG_FRESHNESS
                 </span>
               </div>
@@ -154,22 +212,23 @@ export default function MarketMapPage() {
             </div>
           </GlassCard>
         ) : (
+          /* IDLE/EMPTY STATE */
           <div className="text-center py-4">
-            <span className="font-[family-name:var(--font-mono)] text-[0.6875rem] tracking-widest text-on-surface-variant">
-              {loading ? 'DOWNLOADING_NODES...' : 'SELECT_MARKET_NODE'}
+            <span className="font-mono text-[0.6875rem] tracking-widest text-on-surface-variant">
+              SELECT_MARKET_NODE
             </span>
           </div>
         )}
 
         <div className="flex items-center justify-center gap-6 mt-4">
           {[
-            { l: 'HIGH (85+)', c: 'bg-secondary' },
-            { l: 'MED (70-84)', c: 'bg-neon' },
-            { l: 'LOW (<70)', c: 'bg-error' },
-          ].map(x => (
+            { l: "HIGH (85+)", c: "bg-secondary" },
+            { l: "MED (70-84)", c: "bg-neon" },
+            { l: "LOW (<70)", c: "bg-error" },
+          ].map((x) => (
             <div key={x.l} className="flex items-center gap-2">
               <div className={`w-3 h-3 ${x.c}`} />
-              <span className="font-[family-name:var(--font-mono)] text-[0.5rem] tracking-widest text-on-surface-variant">
+              <span className="font-mono text-[0.5rem] tracking-widest text-on-surface-variant">
                 {x.l}
               </span>
             </div>

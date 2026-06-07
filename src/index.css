@@ -53,24 +53,6 @@
   --heading-color: #ffffff;
 }
 
-:root.light {
-  --bg: #f5f5f5;
-  --on-surface: #121212;
-  --heading-color: #121212;
-  --color-bg-void: #e8e8e8;
-  --color-surface: #f5f5f5;
-  --color-surface-lowest: #ebebeb;
-  --color-surface-low: #e8e8e8;
-  --color-surface-mid: #e0e0e0;
-  --color-surface-high: #d4d4d4;
-  --color-surface-highest: #cacaca;
-  --color-surface-bright: #c2c2c2;
-  --color-on-surface-variant: #3a3d2e;
-  --color-outline: #5c6048;
-  --color-outline-variant: #b0b59a;
-  --color-tertiary: #121212;
-}
-
 /* ── GLOBAL RESET: ZERO RADIUS ── */
 *,
 *::before,
@@ -394,15 +376,24 @@ input::placeholder {
   --bg: #ffffff;
   --on-surface: #121212;
   --heading-color: #121212;
-  /* Surface and border tokens for light mode readability */
   --color-surface: #f7f7f7;
   --color-surface-lowest: #ffffff;
   --color-surface-low: #f2f2f2;
   --color-surface-mid: #e8e8e8;
   --color-surface-high: #dedede;
   --color-surface-highest: #d4d4d4;
+  --color-surface-bright: #c2c2c2;
+  --color-bg-void: #e8e8e8;
   --color-on-surface-variant: #3d3d3d;
   --color-outline: #6b6b6b;
   --color-outline-variant: #c9c9c9;
   --color-tertiary: #121212;
+
+  /* ← These two are the main contrast fix */
+  --color-neon-text: #3a5200;     /* dark green instead of light yellow */
+  --color-neon-dark: #3a5200;
+}
+
+@media print {
+  nav, .print\:hidden { display: none !important; }
 }

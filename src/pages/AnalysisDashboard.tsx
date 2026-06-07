@@ -107,7 +107,7 @@ export default function AnalysisDashboard() {
           {/* Main score card */}
           <GlassCard className="flex-1 p-8 relative overflow-hidden" variant="tonal">
             <div className="absolute top-4 right-4">
-              <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-neon-text bg-surface-highest px-2 py-1">
+              <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-neon-text dark:text-neon-text text-neon-dark bg-surface-highest px-2 py-1">
                 GRADE_{grade}
               </span>
             </div>
@@ -162,7 +162,7 @@ export default function AnalysisDashboard() {
               {species.tags.map(tag => (
                 <span
                   key={tag}
-                  className="bg-surface-highest/40 text-on-surface-variant font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest px-3 py-1.5"
+                  className="bg-surface-highest text-on-surface-variant font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest px-3 py-1.5"
                 >
                   {tag}
                 </span>
@@ -222,7 +222,7 @@ export default function AnalysisDashboard() {
                           {meta.label}
                         </h4>
                         <div className="flex items-center gap-3">
-                          <span className={`font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest ${isAlert ? 'text-error' : 'text-neon-text'}`}>
+                          <span className={`font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest ${isAlert ? 'text-error' : 'text-neon-dark'}`}>
                             {isAlert && <AlertTriangle size={10} className="inline mr-1" />}
                             {bm.status}
                           </span>
