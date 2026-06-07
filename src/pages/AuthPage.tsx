@@ -21,14 +21,18 @@ export default function AuthPage() {
     const error = params.get('error');
 
     if (error) {
-      setStatus('error');
-      setErrorMsg('Authentication failed. Please try again.');
+      setTimeout(() => {
+        setStatus('error');
+        setErrorMsg('Authentication failed. Please try again.');
+      }, 0);
       window.history.replaceState({}, '', '/auth');
       return;
     }
 
     if (accessToken) {
-      setStatus('processing');
+      setTimeout(() => {
+        setStatus('processing');
+      }, 0);
       setToken(accessToken);
       window.history.replaceState({}, '', '/auth');
       navigate('/mode', { replace: true });
@@ -44,11 +48,11 @@ export default function AuthPage() {
     try {
       setStatus('processing');
       const loginUrl = api.loginUrl();
-      
+
       if (!loginUrl) {
         throw new Error("Login URL configuration missing");
       }
-      
+
       // Force full browser navigation for OAuth
       window.location.href = loginUrl;
     } catch (err) {
