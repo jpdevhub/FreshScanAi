@@ -1,21 +1,32 @@
 import { useState, useEffect } from 'react';
 
+interface BeforeInstallPromptEvent extends Event {
+    readonly platforms: string[];
+    readonly userChoice: Promise<{
+        outcome: 'accepted' | 'dismissed';
+        platform: string;
+    }>;
+    prompt(): Promise<void>;
+}
+
 export default function InstallPrompt() {
     console.log("InstallPrompt Rendered");
     const [showInstallPrompt, setShowInstallPrompt] = useState(false);
-    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
     useEffect(() => {
-        const handler = (e: any) => {
+        const handler = (e: Event) => {
             e.preventDefault();
 
-            const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+            const installEvent = e as BeforeInstallPromptEvent;
+
+            const userAgent = navigator.userAgent || navigator.vendor || '';
 
             const isMobileOrTablet = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
             const hasTouchScreen = window.matchMedia('(pointer: coarse)').matches;
 
             if (isMobileOrTablet && hasTouchScreen) {
-                setDeferredPrompt(e);
+                setDeferredPrompt(installEvent);
                 setShowInstallPrompt(true);
                 console.log("Is Mobile or Tablet : ", isMobileOrTablet);
                 console.log("User Agent : ", userAgent);
@@ -24,10 +35,10 @@ export default function InstallPrompt() {
             console.log('beforeinstallprompt fired');
         };
 
-        window.addEventListener('beforeinstallprompt', handler);
+        window.addEventListener('beforeinstallprompt', handler as EventListener);
 
         return () => {
-            window.removeEventListener('beforeinstallprompt', handler);
+            window.removeEventListener('beforeinstallprompt', handler as EventListener);
         };
     }, []);
 
@@ -52,12 +63,11 @@ export default function InstallPrompt() {
         setShowInstallPrompt(false);
     };
 
-    const handleNotNow = async () => {
+    const handleNotNow = () => {
         setShowInstallPrompt(false);
-    }
+    };
 
     return (
-
         <>
             {showInstallPrompt && (
                 <div
@@ -90,7 +100,7 @@ export default function InstallPrompt() {
                     <div className="mt-5 flex gap-3">
                         <button
                             onClick={handleInstallClick}
-                            className="flex-1 border-4 border-black bg-lime-300  px-4 py-3 text-black uppercase shadow-[4px_4px_0px_0px_black] active:translate-x-1 active:translate-y-1 active:shadow-none"
+                            className="flex-1 border-4 border-black bg-lime-300 px-4 py-3 text-black uppercase shadow-[4px_4px_0px_0px_black] active:translate-x-1 active:translate-y-1 active:shadow-none"
                         >
                             Install
                         </button>
