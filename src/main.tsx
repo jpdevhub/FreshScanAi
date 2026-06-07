@@ -26,6 +26,20 @@ if (POSTHOG_KEY) {
   });
 }
 
+if ('serviceWorker' in navigator) {
+  try {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => {
+        console.log('SW registered', reg);
+      })
+      .catch(console.error);
+  }
+  catch (e) {
+    console.log("Error occured during the registration of sw", e)
+  }
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <PostHogProvider client={posthog}>

@@ -9,14 +9,14 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/fish.gif",
+      "src": "/image_192.png",
       "sizes": "192x192",
-      "type": "image/gif"
+      "type": "image/png"
     },
     {
-      "src": "/fish.gif",
+      "src": "/image_512.png",
       "sizes": "512x512",
-      "type": "image/gif"
+      "type": "image/png"
     }
   ]
 }

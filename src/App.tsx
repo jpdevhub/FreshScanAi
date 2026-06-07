@@ -10,6 +10,7 @@ import MarketMapPage from './pages/MarketMapPage';
 import ResultsPage from './pages/ResultsPage';
 import PostHogPageView from './components/PostHogPageView';
 import NotFound from './pages/NotFound';
+import InstallPrompt from './components/InstallPrompt';
 
 export default function App() {
   return (
@@ -19,7 +20,7 @@ export default function App() {
       
       {/* Fires a $pageview event to PostHog on every SPA route change */}
       <PostHogPageView />
-      
+      <InstallPrompt />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<LandingPage />} />
