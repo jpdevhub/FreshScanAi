@@ -24,3 +24,6 @@ httpx>=0.27.0
 
 # ── HF Hub (model download at container startup) ──────────────────────────────
 huggingface_hub>=0.22.0
+
+# ── Rate Limiting ─────────────────────────────────────────────────────────────
+slowapi==0.1.9

@@ -2,7 +2,6 @@
 Real-world fish market locations via OpenStreetMap Overpass API.
 Endpoint: GET /api/v1/maps/markets/live?lat=...&lng=...&radius=5000
 """
-
 import httpx
 import math
 from fastapi import APIRouter, Query
@@ -26,7 +25,6 @@ out body;
 def _lat_lng_to_bbox(lat: float, lng: float, radius_m: float):
     """Convert center + radius to bounding box (south, west, north, east)."""
     delta_lat = radius_m / 111320
-    import math
     delta_lng = radius_m / (111320 * abs(math.cos(math.radians(lat))) + 1e-9)
     return {
         "south": lat - delta_lat,
@@ -76,33 +74,29 @@ async def get_live_markets(
     """
     bbox = _lat_lng_to_bbox(lat, lng, radius)
     query = OVERPASS_QUERY_TEMPLATE.format(**bbox)
-
     try:
-     async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-        OVERPASS_URL,
-        data={"data": query},
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": "FreshScanAI/1.0 (https://github.com/jpdevhub/FreshScanAi)",
-        },
-    )
-        response.raise_for_status()
-        data = response.json()
-
-        elements = data.get("elements", [])
-        markets = _parse_overpass(elements)
-
-        return {
-            "success": True,
-            "source": "openstreetmap",
-            "count": len(markets),
-            "lat": lat,
-            "lng": lng,
-            "radius_m": radius,
-            "markets": markets,
-        }
-
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                OVERPASS_URL,
+                data={"data": query},
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "User-Agent": "FreshScanAI/1.0 (https://github.com/jpdevhub/FreshScanAi)",
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            elements = data.get("elements", [])
+            markets = _parse_overpass(elements)
+            return {
+                "success": True,
+                "source": "openstreetmap",
+                "count": len(markets),
+                "lat": lat,
+                "lng": lng,
+                "radius_m": radius,
+                "markets": markets,
+            }
     except httpx.TimeoutException:
         return {
             "success": False,
