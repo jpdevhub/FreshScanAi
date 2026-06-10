@@ -4,13 +4,15 @@ import numpy as np
 # Stream A: 0 = C1, 1 = C2, 2 = C3
 # Stream B: 0 = Fresh_Eyes, 1 = Fresh_Gills, 2 = Nonfresh_Eyes, 3 = Nonfresh_Gills
 
+
 def apply_temperature_scaling(logits: np.ndarray, temperature: float = 1.5) -> np.ndarray:
     """
     Applies Temperature Scaling to raw logits to calibrate confidence (ECE requirement).
     """
     scaled_logits = logits / temperature
-    exp_logits = np.exp(scaled_logits - np.max(scaled_logits)) # stability
+    exp_logits = np.exp(scaled_logits - np.max(scaled_logits))  # stability
     return exp_logits / np.sum(exp_logits)
+
 
 def calculate_confidence(
     body_probs: np.ndarray, eye_probs: np.ndarray, gill_probs: np.ndarray
@@ -29,6 +31,7 @@ def calculate_confidence(
 
     # Combined confidence
     return (0.5 * body_conf) + (0.25 * eye_conf) + (0.25 * gill_conf)
+
 
 def process_and_fuse(
     body_logits: np.ndarray,
@@ -77,11 +80,11 @@ def process_and_fuse(
         "regional_breakdown": {
             "body_freshness_score": float(body_score),
             "eye_freshness_score": float(eye_score),
-            "gill_freshness_score": float(gill_score)
+            "gill_freshness_score": float(gill_score),
         },
         "raw_probs": {
             "body_probs": body_probs.tolist(),
             "eye_probs": eye_probs.tolist(),
-            "gill_probs": gill_probs.tolist()
-        }
+            "gill_probs": gill_probs.tolist(),
+        },
     }

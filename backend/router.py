@@ -15,32 +15,35 @@ class ImageType(Enum):
 
 # Fish-related class indices in the ImageNet-1K label set
 FISH_CLASS_INDICES = {
-    0,   # tench
-    1,   # goldfish
-    2,   # great white shark
-    3,   # tiger shark
-    4,   # hammerhead shark
-    5,   # electric ray
-    6,   # stingray
-    389, # barracouta
-    390, # eel
-    391, # coho salmon
-    392, # rock beauty
-    393, # anemone fish
-    394, # sturgeon
-    395, # gar
-    396, # lionfish
-    397, # puffer fish
+    0,  # tench
+    1,  # goldfish
+    2,  # great white shark
+    3,  # tiger shark
+    4,  # hammerhead shark
+    5,  # electric ray
+    6,  # stingray
+    389,  # barracouta
+    390,  # eel
+    391,  # coho salmon
+    392,  # rock beauty
+    393,  # anemone fish
+    394,  # sturgeon
+    395,  # gar
+    396,  # lionfish
+    397,  # puffer fish
 }
 
 # ImageNet normalization & resize for the ImageNet-pretrained gate model
-_gate_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
+_gate_transform = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
 
 _gate_model = None
+
 
 def _get_gate_model():
     global _gate_model
@@ -77,24 +80,23 @@ def is_valid_fish_image(image: Image.Image) -> tuple[bool, float]:
     return False, fish_score
 
 
-
 def _has_red_dominance(image: Image.Image) -> tuple[bool, float]:
     """
     Detects gill-red using HSV color space, which is robust to lighting changes.
     Gills are reliably in the red hue range (0-15 or 340-360 degrees in HSV).
     Returns (is_dominant, red_ratio).
     """
-    hsv = image.convert('HSV')
+    hsv = image.convert("HSV")
     hsv_array = np.array(hsv, dtype=np.float32)
 
     h, s, v = hsv_array[:, :, 0], hsv_array[:, :, 1], hsv_array[:, :, 2]
 
     # PIL HSV: H is 0-255 (not 0-360). Red wraps around 0 and 255.
     # Red hue range: 0-15 degrees -> 0-10 in PIL scale, and 340-360 -> 240-255 in PIL scale
-    red_hue_low  = (h <= 10)
-    red_hue_high = (h >= 240)
-    has_saturation = s > 80   # Must be a vivid red, not washed out grey/pink
-    has_brightness = v > 80   # Must be visible, not black
+    red_hue_low = h <= 10
+    red_hue_high = h >= 240
+    has_saturation = s > 80  # Must be a vivid red, not washed out grey/pink
+    has_brightness = v > 80  # Must be visible, not black
 
     red_mask = (red_hue_low | red_hue_high) & has_saturation & has_brightness
     red_ratio = red_mask.sum() / red_mask.size
@@ -120,12 +122,14 @@ def _has_dark_circular_region(img_array: np.ndarray) -> tuple[bool, float]:
     x2 = min(w, cx + sample_radius)
 
     center_crop = gray[y1:y2, x1:x2]
-    surrounding = np.concatenate([
-        gray[:y1, :].flatten(),
-        gray[y2:, :].flatten(),
-        gray[:, :x1].flatten(),
-        gray[:, x2:].flatten()
-    ])
+    surrounding = np.concatenate(
+        [
+            gray[:y1, :].flatten(),
+            gray[y2:, :].flatten(),
+            gray[:, :x1].flatten(),
+            gray[:, x2:].flatten(),
+        ]
+    )
 
     center_mean = center_crop.mean()
     surrounding_mean = surrounding.mean() if surrounding.size > 0 else center_mean

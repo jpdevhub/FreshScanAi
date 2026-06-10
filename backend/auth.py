@@ -9,7 +9,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 # ── Dev bypass auth ───────────────────────────────────────────────────────────
 # Set DEV_BYPASS_AUTH=true in backend/.env for local testing.
 # NEVER set this in production / HF Space secrets.
-DEV_BYPASS_AUTH  = os.environ.get("DEV_BYPASS_AUTH", "false").lower() == "true"
+DEV_BYPASS_AUTH = os.environ.get("DEV_BYPASS_AUTH", "false").lower() == "true"
 DEV_BYPASS_TOKEN = os.environ.get("DEV_BYPASS_TOKEN", "dev-local-bypass-token")
 
 _DEV_USER_ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, "dev-test-user"))
@@ -17,21 +17,25 @@ _DEV_USER_ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, "dev-test-user"))
 
 class _DevUser:
     """Minimal object that mimics a Supabase User for local dev."""
+
     def __init__(self):
-        self.id    = _DEV_USER_ID
+        self.id = _DEV_USER_ID
         self.email = "dev@freshscan.local"
         self.user_metadata = {
-            "full_name":  "Dev Tester",
+            "full_name": "Dev Tester",
             "avatar_url": None,
         }
 
+
 _auth_client: Client = None
+
 
 def get_auth_client() -> Client:
     global _auth_client
     if _auth_client is None:
         _auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
     return _auth_client
+
 
 async def get_current_user(authorization: str = Header(...)):
     """
@@ -62,16 +66,15 @@ async def get_current_user(authorization: str = Header(...)):
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
+
 def get_google_oauth_url(redirect_to: str) -> str:
     """Generates the Supabase Google OAuth sign-in URL."""
     client = get_auth_client()
-    response = client.auth.sign_in_with_oauth({
-        "provider": "google",
-        "options": {
-            "redirect_to": redirect_to
-        }
-    })
+    response = client.auth.sign_in_with_oauth(
+        {"provider": "google", "options": {"redirect_to": redirect_to}}
+    )
     return response.url
+
 
 def exchange_code_for_session(code: str):
     """Exchanges the PKCE auth code (from callback) for a session."""

@@ -18,11 +18,12 @@ from supabase import create_client
 # Load .env from same directory as this script
 try:
     from dotenv import load_dotenv
+
     load_dotenv(Path(__file__).parent / ".env")
 except ImportError:
     pass
 
-SUPABASE_URL         = os.environ.get("SUPABASE_URL", "https://mjklfhjnebidbsizulgr.supabase.co")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://mjklfhjnebidbsizulgr.supabase.co")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 
 SEED_FILE = Path(__file__).parent / "data" / "vendors_seed.json"
@@ -43,18 +44,18 @@ def main():
     for v in vendors:
         # Try full insert (migration applied)
         full_row = {
-            "name":                v["name"],
-            "address":             v.get("address", ""),
-            "lat":                 v["lat"],
-            "lng":                 v["lng"],
-            "trust_score":         v.get("trust_score", 0.0),
+            "name": v["name"],
+            "address": v.get("address", ""),
+            "lat": v["lat"],
+            "lng": v["lng"],
+            "trust_score": v.get("trust_score", 0.0),
             "avg_freshness_score": v.get("avg_freshness_score", 0),
-            "vendor_count":        v.get("vendor_count", 1),
-            "total_scans":         v.get("total_scans", 0),
+            "vendor_count": v.get("vendor_count", 1),
+            "total_scans": v.get("total_scans", 0),
         }
         base_row = {
-            "name":        v["name"],
-            "address":     v.get("address", ""),
+            "name": v["name"],
+            "address": v.get("address", ""),
             "trust_score": v.get("trust_score", 0.0),
         }
 

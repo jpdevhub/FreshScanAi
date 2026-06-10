@@ -9,18 +9,19 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 from inference import load_models, predict_stream_a, predict_stream_b
 from fusion import apply_temperature_scaling
 
+
 def run_upload_test():
     # Hide the main tkinter window
     root = tk.Tk()
     root.withdraw()
 
     # Force window to top
-    root.attributes('-topmost', True)
+    root.attributes("-topmost", True)
 
     print("Opening file dialog... Please select an image file to test.")
     file_path = filedialog.askopenfilename(
         title="Select an Image for FreshScan AI",
-        filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp")]
+        filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp")],
     )
 
     if not file_path:
@@ -83,5 +84,6 @@ def run_upload_test():
     except Exception as e:
         print(f"Inference failed: {e}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     run_upload_test()

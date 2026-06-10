@@ -8,6 +8,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 from inference import load_models, predict_stream_a, predict_stream_b
 from fusion import process_and_fuse
 
+
 def verify_pipeline():
     print("Testing ML Pipeline...")
 
@@ -22,9 +23,9 @@ def verify_pipeline():
         return
 
     # Create dummy images (solid colors simulating crops/body)
-    dummy_body = Image.new('RGB', (224, 224), color='gray')
-    dummy_eye = Image.new('RGB', (64, 64), color='black')
-    dummy_gill = Image.new('RGB', (64, 64), color='darkred')
+    dummy_body = Image.new("RGB", (224, 224), color="gray")
+    dummy_eye = Image.new("RGB", (64, 64), color="black")
+    dummy_gill = Image.new("RGB", (64, 64), color="darkred")
 
     print("Running Inference over Dummy Images...")
     try:
@@ -45,6 +46,7 @@ def verify_pipeline():
         print("\nPIPELINE VERIFICATION SUCCESS.")
     except Exception as e:
         print(f"Fusion failed: {e}")
+
 
 if __name__ == "__main__":
     verify_pipeline()

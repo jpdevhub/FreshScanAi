@@ -11,3 +11,4 @@ pytest>=8.0.0
 # Comment these out if you don't have GPU/model files and just want demo mode.
 torch>=2.2.0
 torchvision>=0.27.0
+slowapi==0.1.9  # rate limiting for FastAPI; added for per-user scan endpoint throttling

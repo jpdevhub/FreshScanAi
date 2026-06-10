@@ -11,6 +11,21 @@ import os
 # Ensure the backend directory is on the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# ---------------------------------------------------------------------------
+# INTERCEPT MOCKS (Must run BEFORE importing any app modules)
+# ---------------------------------------------------------------------------
+from unittest.mock import MagicMock
+
+# Inject dummy modules into sys.modules to stop Python from loading heavy/broken packages
+mock_supabase = MagicMock()
+sys.modules['supabase'] = mock_supabase
+
+mock_inference = MagicMock()
+mock_inference.load_models = MagicMock()
+mock_inference.predict_stream_a = MagicMock()
+mock_inference.predict_stream_b = MagicMock()
+sys.modules['inference'] = mock_inference
+
 import numpy as np
 
 
@@ -82,7 +97,7 @@ def test_process_and_fuse_grade_is_valid():
 
 
 def test_process_and_fuse_uncertain_flag_is_bool():
-    body = np.array([1.0, 1.0, 1.0])   # uniform → low confidence
+    body = np.array([1.0, 1.0, 1.0])  # uniform → low confidence
     eye = np.array([1.0, 1.0, 1.0, 1.0])
     gill = np.array([1.0, 1.0, 1.0, 1.0])
     result = process_and_fuse(body, eye, gill)
@@ -93,10 +108,60 @@ def test_process_and_fuse_uncertain_flag_is_bool():
 # auth.py — environment parsing logic, no Supabase connection needed
 # ---------------------------------------------------------------------------
 
+
 def test_dev_bypass_constants_are_readable():
     """Verify the module loads and the env-driven constants are accessible."""
     import auth
+
     assert hasattr(auth, "DEV_BYPASS_AUTH")
     assert hasattr(auth, "DEV_BYPASS_TOKEN")
     assert isinstance(auth.DEV_BYPASS_AUTH, bool)
     assert isinstance(auth.DEV_BYPASS_TOKEN, str)
+
+
+# Now we can safely import from main without needing the actual package installed!
+import pytest
+from main import _derive_grade
+
+# 1. Test Boundary Values and Valid Grade Ranges
+@pytest.mark.parametrize("score, expected_grade", [
+    (100, "A+"),
+    (92, "A+"),    # Exact boundary for A+
+    (91.9, "A"),   # Just below A+ boundary
+    (80, "A"),     # Exact boundary for A
+    (79.9, "B"),   # Just below A boundary
+    (65, "B"),     # Exact boundary for B
+    (64.9, "C"),   # Just below B boundary
+    (50, "C"),     # Exact boundary for C
+    (49.9, "D"),   # Just below C boundary
+    (0, "D"),      # Minimum standard boundary
+])
+def test_derive_grade_boundaries(score, expected_grade):
+    assert _derive_grade(score) == expected_grade
+
+
+# 2. Test Out-of-Scale Inputs (Expected to raise ValueError)
+@pytest.mark.parametrize("invalid_score", [
+    (-1),         # Negative scale boundary
+    (-50.5),      # Extreme negative
+    (101),        # Just over maximum scale
+    (200.0),      # Extreme over-scale
+])
+def test_derive_grade_out_of_scale(invalid_score):
+    with pytest.raises(ValueError):
+        _derive_grade(invalid_score)
+
+
+# 3. Test Incorrect Data Types (Expected to raise ValueError)
+@pytest.mark.parametrize("bad_type", [
+    ("95"),         # String containing numbers
+    ("fresh_fish"), # Regular text string
+    (None),         # None Type
+    ([],),          # List/Iterable object
+])
+def test_derive_grade_invalid_types(bad_type):
+    with pytest.raises(ValueError):
+        _derive_grade(bad_type)
+
+
+
