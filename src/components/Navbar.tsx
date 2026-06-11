@@ -93,7 +93,7 @@ export default function Navbar() {
         </div>
 
         {/* Auth Button & Theme Toggle */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="hidden md:flex items-center gap-2 sm:gap-4">
           <select
             value={i18n.language}
             onChange={(e) => i18n.changeLanguage(e.target.value)}
