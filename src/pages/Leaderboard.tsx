@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Skeleton from "../components/Skeleton";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
@@ -16,22 +17,33 @@ interface Vendor {
 }
 
 const BADGE: Record<Badge, { label: string; color: string }> = {
-  gold:     { label: "[ GOLD ]",     color: "var(--color-neon-yellow, #f59e0b)" },
-  silver:   { label: "[ SILVER ]",   color: "var(--color-on-surface, #9ca3af)" },
-  bronze:   { label: "[ BRONZE ]",   color: "var(--color-neon-orange, #f97316)" },
-  unranked: { label: "[ UNRANKED ]", color: "var(--color-outline-variant, #6b7280)" },
+  gold: { label: "[ GOLD ]", color: "var(--color-neon-yellow, #f59e0b)" },
+  silver: { label: "[ SILVER ]", color: "var(--color-on-surface, #9ca3af)" },
+  bronze: { label: "[ BRONZE ]", color: "var(--color-neon-orange, #f97316)" },
+  unranked: {
+    label: "[ UNRANKED ]",
+    color: "var(--color-outline-variant, #6b7280)",
+  },
 };
 
 const TREND: Record<Trend, { icon: string; color: string; label: string }> = {
-  up:     { icon: "^", color: "var(--color-neon-green, #22c55e)",  label: "Improving" },
-  down:   { icon: "v", color: "var(--color-error, #ef4444)",       label: "Declining" },
-  stable: { icon: "-", color: "var(--color-on-surface, #9ca3af)", label: "Stable"    },
+  up: {
+    icon: "^",
+    color: "var(--color-neon-green, #22c55e)",
+    label: "Improving",
+  },
+  down: { icon: "v", color: "var(--color-error, #ef4444)", label: "Declining" },
+  stable: {
+    icon: "-",
+    color: "var(--color-on-surface, #9ca3af)",
+    label: "Stable",
+  },
 };
 
 export default function Leaderboard() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/v1/vendors/leaderboard`)
@@ -40,33 +52,68 @@ export default function Leaderboard() {
         return r.json();
       })
       .then((data) => setVendors(data.leaderboard || []))
-      .catch((e)   => setError(e.message))
-      .finally(()  => setLoading(false));
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen text-on-surface">
-      LOADING...
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-10">
+        {/* Title & Subtitle Skeletons */}
+        <Skeleton className="h-9 w-3/4 mb-1" />
+        <Skeleton className="h-4 w-full mb-8 opacity-60" />
 
-  if (error) return (
-    <div className="flex items-center justify-center min-h-screen text-error">
-      {error}
-    </div>
-  );
+        {/* List Skeletons - Generating 5 placeholder rows */}
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 p-4 border border-outline-variant/30 bg-surface-low"
+            >
+              {/* Index Number */}
+              <Skeleton className="w-7 h-5" />
+
+              {/* Badge */}
+              <Skeleton className="w-20 h-4 shrink-0" />
+
+              {/* Name & Address */}
+              <div className="flex-1 min-w-0 space-y-2">
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+
+              {/* Score & Scans */}
+              <div className="text-right shrink-0 space-y-2 flex flex-col items-end">
+                <Skeleton className="h-6 w-16" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+
+              {/* Trend Icon */}
+              <Skeleton className="w-4 h-6 shrink-0" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="flex items-center justify-center min-h-screen text-error">
+        {error}
+      </div>
+    );
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold mb-1 font-[family-name:var(--font-display)] text-on-surface">
+      <h1 className="text-3xl font-bold mb-1 font-display text-on-surface">
         VENDOR TRUST LEADERBOARD
       </h1>
-      <p className="mb-8 text-sm font-[family-name:var(--font-mono)] tracking-widest text-on-surface/60">
+      <p className="mb-8 text-sm font-mono tracking-widest text-on-surface/60">
         RANKINGS BASED ON ANONYMOUS FRESHNESS SCANS ACROSS MARKETS
       </p>
 
       {vendors.length === 0 ? (
-        <p className="text-on-surface/40 text-center py-20 font-[family-name:var(--font-mono)]">
+        <p className="text-on-surface/40 text-center py-20 font-mono">
           NO VENDOR DATA YET.
         </p>
       ) : (
@@ -79,38 +126,40 @@ export default function Leaderboard() {
                 key={vendor.id}
                 className="flex items-center gap-4 p-4 border border-outline-variant/30 bg-surface-low"
               >
-                <span className="w-7 text-center font-[family-name:var(--font-mono)] tracking-widest text-on-surface/40">
+                <span className="w-7 text-center font-mono tracking-widest text-on-surface/40">
                   {String(index + 1).padStart(2, "0")}
                 </span>
 
                 <span
-                  className="text-xs font-[family-name:var(--font-mono)] tracking-widest shrink-0"
+                  className="text-xs font-mono tracking-widest shrink-0"
                   style={{ color: badge.color }}
                 >
                   {badge.label}
                 </span>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-on-surface truncate font-[family-name:var(--font-display)]">
+                  <p className="font-semibold text-on-surface truncate font-display">
                     {vendor.name}
                   </p>
-                  <p className="text-xs text-on-surface/50 truncate font-[family-name:var(--font-mono)] tracking-widest">
+                  <p className="text-xs text-on-surface/50 truncate font-mono tracking-widest">
                     {vendor.address}
                   </p>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <p className="text-lg font-bold text-neon font-[family-name:var(--font-mono)]">
+                  <p className="text-lg font-bold text-neon font-mono">
                     {(vendor.avg_freshness_score ?? 0).toFixed(1)}
-                    <span className="text-xs font-normal text-on-surface/40">/100</span>
+                    <span className="text-xs font-normal text-on-surface/40">
+                      /100
+                    </span>
                   </p>
-                  <p className="text-xs text-on-surface/40 font-[family-name:var(--font-mono)] tracking-widest">
+                  <p className="text-xs text-on-surface/40 font-mono tracking-widest">
                     {vendor.total_scans ?? 0} SCANS
                   </p>
                 </div>
 
                 <span
-                  className="text-lg font-bold shrink-0 font-[family-name:var(--font-mono)]"
+                  className="text-lg font-bold shrink-0 font-mono"
                   title={trend.label}
                   style={{ color: trend.color }}
                 >
