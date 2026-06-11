@@ -13,6 +13,7 @@ import ResultsPage from './pages/ResultsPage';
 import Leaderboard from './pages/Leaderboard';
 import PostHogPageView from './components/PostHogPageView';
 import NotFound from './pages/NotFound';
+import InstallPrompt from './components/InstallPrompt';
 import PublicReport from "./pages/PublicReport";
 
 export default function App() {
@@ -36,7 +37,7 @@ useEffect(() => {
       
       {/* Fires a $pageview event to PostHog on every SPA route change */}
       <PostHogPageView />
-      
+      <InstallPrompt />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<LandingPage />} />
