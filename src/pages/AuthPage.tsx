@@ -12,16 +12,13 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const posthog = usePostHog();
   const [status, setStatus] = useState<'idle' | 'processing' | 'error'>(() => {
-    if (typeof window === 'undefined') return 'idle';
-
     const params = new URLSearchParams(window.location.search);
     if (params.get('error')) return 'error';
     if (params.get('access_token')) return 'processing';
     return 'idle';
   });
-  
+
   const [errorMsg, setErrorMsg] = useState(() => {
-    if (typeof window === 'undefined') return '';
     const params = new URLSearchParams(window.location.search);
     return params.get('error') ? 'Authentication failed. Please try again.' : '';
   });
