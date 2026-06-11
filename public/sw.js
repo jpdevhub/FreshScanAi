@@ -36,7 +36,15 @@ self.addEventListener('fetch', (event) => {
     fetch(event.request)
       .catch(() => {
         return caches.match(event.request).then((response) => {
-          return response || caches.match('/index.html');
+          if (response) {
+            return response;
+          }
+
+          if (event.request.mode === 'navigate') {
+            return caches.match('/index.html');
+          }
+
+          return Promise.reject(new Error('Network request failed and asset is not cached.'));
         });
       })
   );

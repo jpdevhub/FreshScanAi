@@ -11,8 +11,20 @@ const IS_DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 export default function AuthPage() {
   const navigate = useNavigate();
   const posthog = usePostHog();
-  const [status, setStatus] = useState<'idle' | 'processing' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [status, setStatus] = useState<'idle' | 'processing' | 'error'>(() => {
+    if (typeof window === 'undefined') return 'idle';
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('error')) return 'error';
+    if (params.get('access_token')) return 'processing';
+    return 'idle';
+  });
+  
+  const [errorMsg, setErrorMsg] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    const params = new URLSearchParams(window.location.search);
+    return params.get('error') ? 'Authentication failed. Please try again.' : '';
+  });
 
   // Handle redirect from backend OAuth callback
   useEffect(() => {
@@ -21,18 +33,11 @@ export default function AuthPage() {
     const error = params.get('error');
 
     if (error) {
-      setTimeout(() => {
-        setStatus('error');
-        setErrorMsg('Authentication failed. Please try again.');
-      }, 0);
       window.history.replaceState({}, '', '/auth');
       return;
     }
 
     if (accessToken) {
-      setTimeout(() => {
-        setStatus('processing');
-      }, 0);
       setToken(accessToken);
       window.history.replaceState({}, '', '/auth');
       navigate('/mode', { replace: true });
