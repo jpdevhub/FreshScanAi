@@ -28,7 +28,7 @@ from PIL import Image
 # Inference/fusion require PyTorch — import lazily so server starts without it
 try:
     from inference import load_models, predict_stream_a, predict_stream_b
-    from backend.fusion import process_and_fuse
+    from fusion import process_and_fuse
 
     _torch_available = True
 except ModuleNotFoundError:
@@ -536,7 +536,7 @@ async def scan_auto(
         return {"success": True, "scan": payload}
 
     # ── Real inference path ───────────────────────────────────────────────────
-    from backend.router import classify_image_type, ImageType
+    from router import classify_image_type, ImageType
 
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     image_type = classify_image_type(img)
@@ -859,7 +859,7 @@ async def generate_gradcam(
     # ── Real Grad-CAM path ──────────────────────────────────────────────────────
     import torch  # noqa: F401
     import numpy as np
-    from backend.inference import stream_a_model, stream_a_transforms, device
+    from inference import stream_a_model, stream_a_transforms, device
     from router import is_valid_fish_image
 
     # Fish validity gate — same gate used by /api/v1/scan-auto
