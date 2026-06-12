@@ -946,10 +946,10 @@ async def generate_gradcam(
 
 
 # -- VENDOR TRUST SCORE (Issue #45) -----------------------------------------
-from backend.vendors import router as vendors_router, register_routes
+from vendors import router as vendors_router, register_routes
 
 register_routes(vendors_router, _db)
-from backend.markets import router as markets_router
+from markets import router as markets_router
 app.include_router(markets_router)
 app.include_router(vendors_router)
 
