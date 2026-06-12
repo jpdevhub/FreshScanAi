@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ScanLine, Map, Languages, SunMoon } from 'lucide-react';
+import { ScanLine, Map, Layers, Languages, SunMoon } from 'lucide-react';
 import { useTranslation } from "react-i18next";
 import { toggleTheme } from '../lib/theme';
 
 const navItems = [
   { to: '/scanner', icon: ScanLine, label: 'SCANNER' },
   { to: '/map', icon: Map, label: 'MAP' },
+  { to: '/mode', icon: Layers, label: 'MODE' },
 ];
 
 export default function BottomNav() {
