@@ -74,6 +74,16 @@ export default function ScannerPage() {
       const result = await api.submitScan(blob);
       stopProgressBar(100);
       sessionStorage.setItem('lastScanId', result.scan.scan_id);
+      
+      // Save scanned image base64 in sessionStorage for immediate dashboard rendering
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          sessionStorage.setItem('lastScanImage', e.target.result as string);
+        }
+      };
+      reader.readAsDataURL(blob);
+
       setFreshness(result.scan.freshness_index);
       setScanPhase('done');
       // Auto-navigate to analysis after a short "done" flash
