@@ -3,16 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import { usePostHog } from 'posthog-js/react';
 import StatusTerminal from '../components/StatusTerminal';
 import { api, setToken, isAuthenticated } from '../lib/api';
+import useTurnstile from '../lib/useTurnstile';
 
 // Bypass token must match DEV_BYPASS_TOKEN in backend/.env
 const DEV_BYPASS_TOKEN = 'dev-local-bypass-token';
 const IS_DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
 export default function AuthPage() {
   const navigate = useNavigate();
   const posthog = usePostHog();
-  const [status, setStatus] = useState<'idle' | 'processing' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
+  const { containerRef, ready: turnstileReady, execute: executeTurnstile, error: turnstileError } = useTurnstile(TURNSTILE_SITE_KEY);
+  const [status, setStatus] = useState<'idle' | 'processing' | 'error'>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('error')) return 'error';
+    if (params.get('access_token')) return 'processing';
+    return 'idle';
+  });
+
+  const [errorMsg, setErrorMsg] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('error') ? 'Authentication failed. Please try again.' : '';
+  });
 
   // Handle redirect from backend OAuth callback
   useEffect(() => {
@@ -22,14 +34,11 @@ export default function AuthPage() {
     const error = params.get('error');
 
     if (error) {
-      setStatus('error');
-      setErrorMsg('Authentication failed. Please try again.');
       window.history.replaceState({}, '', '/auth');
       return;
     }
 
     if (accessToken) {
-      setStatus('processing');
       setToken(accessToken);
       if (refreshToken) {
         localStorage.setItem('fs_refresh_token', refreshToken);
@@ -44,21 +53,36 @@ export default function AuthPage() {
     }
   }, [navigate, posthog]);
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     try {
       setStatus('processing');
-      const loginUrl = api.loginUrl();
-      
-      if (!loginUrl) {
-        throw new Error("Login URL configuration missing");
+      let turnstileToken: string | undefined;
+
+      if (TURNSTILE_SITE_KEY) {
+        if (!turnstileReady) {
+          throw new Error('Turnstile is still loading. Please wait and try again.');
+        }
+        if (turnstileError) {
+          throw turnstileError;
+        }
+        turnstileToken = await executeTurnstile();
       }
-      
+
+      const loginUrl = await api.loginUrl(turnstileToken);
+      if (!loginUrl) {
+        throw new Error('Login URL configuration missing');
+      }
+
       // Force full browser navigation for OAuth
       window.location.href = loginUrl;
     } catch (err) {
       setStatus('error');
-      setErrorMsg('Could not initiate Google Login. Please check your network connection.');
-      console.error("Auth initiation failed:", err);
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : 'Could not initiate Google Login. Please check your network connection.'
+      );
+      console.error('Auth initiation failed:', err);
     }
   };
 
@@ -106,12 +130,27 @@ export default function AuthPage() {
               Sign in to view your live Trust Map and sync biomarker data across devices.
             </p>
           )}
+
+          {TURNSTILE_SITE_KEY && !turnstileReady && (
+            <p className="text-warning text-sm mt-4 font-[family-name:var(--font-mono)]">
+              Loading verification challenge...
+            </p>
+          )}
+
+          {turnstileError && (
+            <p className="text-error text-sm mt-4 font-[family-name:var(--font-mono)]">
+              {turnstileError.message}
+            </p>
+          )}
         </div>
 
         <div className="space-y-4">
           <button
             type="button"
-            disabled={status === 'processing'}
+            disabled={
+              status === 'processing' ||
+              (TURNSTILE_SITE_KEY ? !turnstileReady || !!turnstileError : false)
+            }
             onClick={handleGoogleLogin}
             className="w-full bg-surface-mid text-on-surface py-5 font-[family-name:var(--font-display)] font-semibold text-sm tracking-wide cursor-pointer transition-all duration-200 hover:bg-surface-high hover:border-outline ghost-border border-none flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -137,6 +176,8 @@ export default function AuthPage() {
           )}
         </div>
       </div>
+
+      <div ref={containerRef} className="mt-4" />
     </div>
   );
 }

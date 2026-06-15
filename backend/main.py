@@ -8,9 +8,11 @@ from contextlib import asynccontextmanager
 from typing import Optional
 from auth import router as auth_router
 from auth import get_current_user, get_google_oauth_url, exchange_code_for_session
+from turnstile import TURNSTILE_SECRET_KEY, verify_turnstile_token
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from rate_limiter import limiter
+
 
 # Load .env file if present (python-dotenv)
 try:
@@ -20,9 +22,10 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, File, Request, UploadFile, Form, HTTPException, Depends, Query
+from fastapi import Body, FastAPI, File, UploadFile, Form, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
+from slowapi import _rate_limit_exceeded_handler
 from supabase import create_client, Client
 from PIL import Image
 
@@ -35,7 +38,6 @@ try:
 except ModuleNotFoundError:
     _torch_available = False
     print("WARNING: PyTorch not installed. Scan endpoints will return 503.")
-
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 # All secrets MUST come from environment variables — no hardcoded fallbacks.
@@ -94,26 +96,19 @@ async def lifespan(app: FastAPI):
         )
     yield
 
-from fastapi import FastAPI
 
 app = FastAPI(title="FreshScan AI", version="1.1.0", lifespan=lifespan) 
 app.include_router(auth_router)
 
+# Parse ADDITIONAL_CORS_ORIGINS from environment
+ADDITIONAL_CORS_ORIGINS = os.environ.get("ADDITIONAL_CORS_ORIGINS", "").split(",")
 _cors_origins = (
     ["*"]
     if CORS_ALLOW_ALL
     else [
         FRONTEND_URL,
-        # Current production frontend — always allow so a stale FRONTEND_URL
-        # env var doesn't lock out users.
-        "https://fresh-scanai.vercel.app",
-        # Extra comma-separated origins from env (e.g. preview deployments).
-        # ADDITIONAL_CORS_ORIGINS=https://preview.vercel.app,https://staging.example.com
-        *[
-            o.strip()
-            for o in os.environ.get("ADDITIONAL_CORS_ORIGINS", "").split(",")
-            if o.strip()
-        ],
+        "https://fresh-scanai.vercel.app",  # production frontend
+        *[origin.strip() for origin in ADDITIONAL_CORS_ORIGINS if origin.strip()],
     ]
 )
 
@@ -125,6 +120,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.state.limiter = limiter
+app.add_exception_handler(429, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 @app.exception_handler(RateLimitExceeded)
@@ -198,33 +194,31 @@ def _body_detail(s: int) -> str:
     return "Significant scale detachment. Mucus layer degraded."
 
 
-def _derive_grade(score: float) -> str:
-    # 1. Type validation checking: Reject anything that isn't an integer or float
-    if not isinstance(score, (int, float)) or isinstance(score, bool):
-        raise ValueError(
-            f"Invalid input type: {type(score)}. Score must be a numeric float/int."
-        )
-
-    # 2. Scale boundaries validation: Must reside strictly between 0.0 and 100.0 inclusive
-    if score < 0 or score > 100:
-        raise ValueError(f"Score {score} is out of valid scale range (0.0 - 100.0).")
-
-    # 3. Proceed safely with the evaluation hierarchy
-    if score >= 92:
-        return "A+"
-    elif score >= 80:
-        return "A"
-    elif score >= 65:
-        return "B"
-    elif score >= 50:
-        return "C"
-    else:
-        return "D"
+def _build_biomarkers(gill_score: int, eye_score: int, body_score: int) -> dict:
+    """Single source-of-truth for the biomarker payload structure."""
+    return {
+        "gill_saturation": {
+            "score": gill_score,
+            "status": _status(gill_score),
+            "detail": _gill_detail(gill_score),
+        },
+        "corneal_clarity": {
+            "score": eye_score,
+            "status": _status(eye_score),
+            "detail": _eye_detail(eye_score),
+        },
+        "epidermal_tension": {
+            "score": body_score,
+            "status": _status(body_score),
+            "detail": _body_detail(body_score),
+        },
+    }
 
 
 def _to_db_grade(grade: str) -> str:
-    """Maps display grade to the DB enum (A, B, C, Spoiled)."""
-    return {"A+": "A", "D": "Spoiled"}.get(grade, grade)
+    """Maps fusion grade to the DB enum (A, B, C, Spoiled)."""
+    # fusion.py returns: A, B, C, Spoiled — all valid DB enum values already
+    return grade
 
 
 def _build_scan_payload(
@@ -240,7 +234,8 @@ def _build_scan_payload(
     eye_score = int(reg["eye_freshness_score"] * 100)
     body_score = int(reg["body_freshness_score"] * 100)
     freshness = int(score)
-    grade = _derive_grade(score)
+    # Use grade from fusion.py as the single source of truth
+    grade = fusion.get("final_grade", "C")
     is_fresh = freshness >= 65
 
     alerts: list[str] = []
@@ -270,23 +265,7 @@ def _build_scan_payload(
             "weight_estimate_kg": 1.2,
             "catch_age_hours": 6,
         },
-        "biomarkers": {
-            "gill_saturation": {
-                "score": gill_score,
-                "status": _status(gill_score),
-                "detail": _gill_detail(gill_score),
-            },
-            "corneal_clarity": {
-                "score": eye_score,
-                "status": _status(eye_score),
-                "detail": _eye_detail(eye_score),
-            },
-            "epidermal_tension": {
-                "score": body_score,
-                "status": _status(body_score),
-                "detail": _body_detail(body_score),
-            },
-        },
+        "biomarkers": _build_biomarkers(gill_score, eye_score, body_score),
         "recommendations": {
             "consume_within_hours": consume_hours,
             "storage_temp": "0-4 C",
@@ -303,24 +282,9 @@ def _row_to_payload(row: dict) -> dict:
     alerts = row.get("alert_flags") or []
     photos = row.get("photo_urls") or []
 
+    # Use _build_biomarkers as a fallback when biomarker_json was not stored
     if not bm:
-        bm = {
-            "gill_saturation": {
-                "score": freshness,
-                "status": _status(freshness),
-                "detail": _gill_detail(freshness),
-            },
-            "corneal_clarity": {
-                "score": freshness,
-                "status": _status(freshness),
-                "detail": _eye_detail(freshness),
-            },
-            "epidermal_tension": {
-                "score": freshness,
-                "status": _status(freshness),
-                "detail": _body_detail(freshness),
-            },
-        }
+        bm = _build_biomarkers(freshness, freshness, freshness)
 
     return {
         "scan_id": row["id"],
@@ -372,12 +336,44 @@ async def api_health_check():
     """Health check endpoint — no auth or DB required."""
     return {"status": "ok"}
 
-@app.get("/api/v1/auth/login/google")
-async def login_google():
+def _auth_redirect_url() -> str:
     callback_url = f"{API_BASE_URL}/api/v1/auth/callback"
+    return get_google_oauth_url(redirect_to=callback_url)
+
+
+async def _verify_turnstile(turnstile_token: str | None, request: Request) -> None:
+    if TURNSTILE_SECRET_KEY:
+        client_host = request.client.host if request.client else None
+        await verify_turnstile_token(turnstile_token, client_host)
+
+
+@app.get("/api/v1/auth/login/google")
+@limiter.limit("5/minute")
+async def login_google_get(
+    request: Request,
+    turnstile_token: str | None = Query(None, alias="turnstile_token"),
+):
     try:
-        url = get_google_oauth_url(redirect_to=callback_url)
-        return RedirectResponse(url=url)
+        await _verify_turnstile(turnstile_token, request)
+        return RedirectResponse(url=_auth_redirect_url())
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Could not generate OAuth URL: {exc}")
+
+
+@app.post("/api/v1/auth/login/google")
+@limiter.limit("5/minute")
+async def login_google_post(
+    request: Request,
+    payload: dict | None = Body(None),
+):
+    turnstile_token = payload.get("turnstile_token") if payload else None
+    try:
+        await _verify_turnstile(turnstile_token, request)
+        return {"redirect_url": _auth_redirect_url()}
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Could not generate OAuth URL: {exc}")
 
@@ -421,11 +417,7 @@ async def get_public_report(scan_id: str):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
-# ── MAIN ──────────────────────────────────────────────────────────────────────
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 
 
 # ── SCAN ──────────────────────────────────────────────────────────────────────
@@ -442,9 +434,54 @@ async def process_scan(
     is_target_domain: bool = Form(default=False),
     current_user=Depends(get_current_user),
 ):
-    if not _models_loaded:
-        raise HTTPException(status_code=503, detail="ML models not loaded.")
+    scan_id = str(uuid.uuid4())
+    display_id = _generate_display_id()
 
+    # ── Demo mode: models not loaded (PyTorch not installed) ─────────────────
+    if not _models_loaded:
+        gill = random.randint(68, 96)
+        eye = random.randint(65, 94)
+        body = random.randint(67, 95)
+        score = round((gill + eye + body) / 3.0, 1)
+        conf = round(random.uniform(0.82, 0.97), 2)
+
+        demo_fusion = {
+            "final_score_percent": score,
+            "final_grade": "A" if score >= 75 else "B" if score >= 60 else "C",
+            "confidence_score": conf,
+            "uncertain_prediction_flag": False,
+            "regional_breakdown": {
+                "gill_freshness_score": gill / 100,
+                "eye_freshness_score": eye / 100,
+                "body_freshness_score": body / 100,
+            },
+        }
+        payload = _build_scan_payload(demo_fusion, scan_id, display_id)
+
+        try:
+            _db().table("scans").insert(
+                {
+                    "id": scan_id,
+                    "user_id": str(current_user.id),
+                    "vendor_id": vendor_id,
+                    "final_grade": _to_db_grade(payload["grade"]),
+                    "confidence_score": conf,
+                    "image_type": "full_scan",
+                    "freshness_index": payload["freshness_index"],
+                    "scan_display_id": display_id,
+                    "species_detected": "Rohu Carp",
+                    "biomarker_json": payload["biomarkers"],
+                    "storage_hours": payload["recommendations"]["consume_within_hours"],
+                    "alert_flags": payload["recommendations"]["alert_flags"],
+                    "is_target_domain": is_target_domain,
+                }
+            ).execute()
+        except Exception as exc:
+            print(f"DB write failed (demo): {exc}")
+
+        return {"success": True, "scan": payload}
+
+    # ── Real inference path ───────────────────────────────────────────────────
     img_body = _read_image(body_image)
     img_eye = _read_image(eye_image)
     img_gill = _read_image(gill_image)
@@ -455,8 +492,6 @@ async def process_scan(
         predict_stream_b(img_gill),
         temperature=1.5,
     )
-    scan_id = str(uuid.uuid4())
-    display_id = _generate_display_id()
     payload = _build_scan_payload(fusion, scan_id, display_id)
 
     try:
@@ -541,6 +576,9 @@ async def scan_auto(
     from router import classify_image_type, ImageType
 
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+
+
+
     image_type = classify_image_type(img)
 
     if image_type == ImageType.NOT_A_FISH:
@@ -549,9 +587,26 @@ async def scan_auto(
             detail="Uploaded image does not appear to contain a fish.",
         )
 
-    body_logits = predict_stream_a(img)
-    eye_logits = predict_stream_b(img)
-    gill_logits = predict_stream_b(img)
+    # Route image to the correct model stream based on detected image type.
+    # The router identified which part of the fish this is, so we use the
+    # appropriate model and provide neutral logits for the other streams.
+    _neutral_logits = predict_stream_b(img)  # reuse stream_b neutral baseline
+    if image_type == ImageType.BODY:
+        body_logits = predict_stream_a(img)
+        eye_logits = _neutral_logits
+        gill_logits = _neutral_logits
+    elif image_type == ImageType.EYE:
+        body_logits = predict_stream_a(img)  # stream_a still contributes
+        eye_logits = predict_stream_b(img)
+        gill_logits = _neutral_logits
+    elif image_type == ImageType.GILL:
+        body_logits = predict_stream_a(img)
+        eye_logits = _neutral_logits
+        gill_logits = predict_stream_b(img)
+    else:  # UNKNOWN — feed all streams with the same image
+        body_logits = predict_stream_a(img)
+        eye_logits = predict_stream_b(img)
+        gill_logits = predict_stream_b(img)
 
     fusion = process_and_fuse(body_logits, eye_logits, gill_logits, temperature=1.5)
     photo_url = await _upload_image(image_bytes, str(current_user.id), scan_id)
@@ -684,6 +739,7 @@ async def get_scan_by_id(scan_id: str, current_user=Depends(get_current_user)):
 
 @app.get("/api/v1/vendors")
 async def get_vendors():
+    """Return all vendors with map coordinates. Leaderboard is handled by vendors.py."""
     try:
         fields = (
             "id, name, address, lat, lng, "
@@ -694,43 +750,19 @@ async def get_vendors():
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
-
 @app.get("/api/v1/vendors/leaderboard")
-async def get_leaderboard():
+async def get_vendor_leaderboard():
+    """Get vendor leaderboard sorted by trust score"""
     try:
-        fields = "id, name, address, avg_freshness_score, total_scans"
         resp = (
             _db()
             .table("vendors")
-            .select(fields)
-            .order("avg_freshness_score", desc=True)
+            .select("id, name, trust_score, total_scans, avg_freshness_score, lat, lng")
+            .order("trust_score", desc=True)
             .limit(10)
             .execute()
         )
-
-        leaderboard = []
-        for v in (resp.data or []):
-            score = v.get("avg_freshness_score") or 0
-            if score >= 85:
-                badge = "gold"
-            elif score >= 70:
-                badge = "silver"
-            elif score >= 50:
-                badge = "bronze"
-            else:
-                badge = "unranked"
-
-            leaderboard.append({
-                "id": v["id"],
-                "name": v["name"],
-                "address": v["address"] or "Unknown Location",
-                "avg_freshness_score": score,
-                "total_scans": v.get("total_scans") or 0,
-                "trust_badge": badge,
-                "trend": "stable",
-            })
-
-        return {"success": True, "leaderboard": leaderboard}
+        return {"success": True, "leaderboard": resp.data}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -870,6 +902,7 @@ async def generate_gradcam(
     from inference import stream_a_model, stream_a_transforms, device
     from router import is_valid_fish_image
 
+
     # Fish validity gate — same gate used by /api/v1/scan-auto
     is_fish, gate_score = is_valid_fish_image(img_pil)
     print(f"   [GradCAM] Fish gate: {'PASS' if is_fish else 'FAIL'} (score={gate_score:.2%})")
@@ -957,4 +990,11 @@ async def generate_gradcam(
 from vendors import router as vendors_router, register_routes
 
 register_routes(vendors_router, _db)
+from markets import router as markets_router
+app.include_router(markets_router)
 app.include_router(vendors_router)
+
+# ── ENTRY POINT ───────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

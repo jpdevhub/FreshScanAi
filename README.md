@@ -99,6 +99,7 @@ The setup script detects your environment automatically:
 ```env
 VITE_API_URL=          # leave blank for local dev; Vite proxy handles /api/*
 VITE_DEV_MODE=true     # enables DEV LOGIN button; never set true in production
+VITE_TURNSTILE_SITE_KEY=  # Cloudflare Turnstile site key
 ```
 
 **Backend** — copy `backend/.env.example` to `backend/.env`:
@@ -109,8 +110,13 @@ SUPABASE_KEY=<auto-filled by npm run setup>
 SUPABASE_SERVICE_KEY=
 FRONTEND_URL=http://localhost:5173
 API_BASE_URL=http://localhost:8000
+TURNSTILE_SECRET_KEY=
 DEV_BYPASS_AUTH=true   # never set true in production
 ```
+
+> Note: When using production auth flows, set `VITE_TURNSTILE_SITE_KEY` in the frontend and `TURNSTILE_SECRET_KEY` in the backend. This enables Cloudflare Turnstile protection for auth endpoint requests.
+
+> Authentication start requests are rate limited in the backend to 5 requests per minute. Invalid or missing Turnstile tokens are rejected with a standard 400 response.
 
 ### Available Scripts
 

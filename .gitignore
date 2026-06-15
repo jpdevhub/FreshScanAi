@@ -63,3 +63,26 @@ Models/
 *.njsproj
 *.sln
 *.sw?
+
+# Additional local / secret ignores
+# Local build outputs
+build/
+
+# Alternate virtualenv names
+myenv/
+
+# Docker local overrides and runtime artifacts
+docker-compose.override.yml
+.docker/
+
+# Hugging Face / ML cache
+.hf/
+.cache/
+
+# Secrets files
+secrets.env
+*.secret
+
+# Local DB / artifacts
+*.sqlite3
+*.db

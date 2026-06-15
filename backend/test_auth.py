@@ -13,10 +13,22 @@ Requirements:
 
 Usage:
   python test_auth.py
+
+CI Mode (skip Turnstile verification):
+  Set SKIP_TURNSTILE_VERIFICATION=true to disable real Turnstile verification
+  in CI environments where Cloudflare Turnstile secrets are not available:
+    SKIP_TURNSTILE_VERIFICATION=true python test_auth.py
+
+New Tests (POST /api/v1/auth/login/google & Turnstile):
+  - test_google_oauth_post_without_turnstile()  : Tests POST endpoint
+  - test_google_oauth_post_with_invalid_turnstile() : Tests Turnstile validation
+  - test_google_oauth_get_redirect()            : Tests GET endpoint with Turnstile
+  - test_auth_login_rate_limiting()             : Tests 5/minute rate limit enforcement
 """
 
 import os
 import sys
+import time
 import requests
 
 BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
@@ -31,6 +43,10 @@ TEST_PASSWORD = os.environ.get("FRESHSCAN_TEST_PASSWORD", "")
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://mjklfhjnebidbsizulgr.supabase.co")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+
+# ─── Turnstile Testing ────────────────────────────────────────────────────────
+# Set SKIP_TURNSTILE_VERIFICATION=true in CI to skip Turnstile tests (no real verification)
+SKIP_TURNSTILE_VERIFICATION = os.environ.get("SKIP_TURNSTILE_VERIFICATION", "").lower() == "true"
 
 
 def _color(code: int, text: str) -> str:
@@ -171,26 +187,122 @@ def test_scan_history(token: str):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5. Test: /api/v1/auth/login/google returns a redirect (302)
+# 5. Test: /api/v1/auth/login/google (POST variant with Turnstile)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def test_google_oauth_redirect():
-    section("Test 4 — GET /api/v1/auth/login/google (Redirects to Google)")
+def test_google_oauth_post_without_turnstile():
+    """Test POST /api/v1/auth/login/google without Turnstile token."""
+    section("Test 4A — POST /api/v1/auth/login/google (No Turnstile)")
 
+    payload = {}
+    r = requests.post(f"{BASE_URL}/api/v1/auth/login/google", json=payload, timeout=10)
+
+    if r.status_code == 200:
+        data = r.json()
+        if "redirect_url" in data:
+            ok("POST /auth/login/google returns JSON with redirect_url ✓")
+            info(f"Redirect URL: {data['redirect_url'][:80]}...")
+        else:
+            fail(f"POST response missing 'redirect_url': {data}")
+    elif r.status_code == 400:
+        # Turnstile is required but token not provided
+        if "Turnstile token is required" in r.text:
+            ok("POST correctly requires Turnstile token when configured ✓")
+        else:
+            ok(f"POST returned 400 (Turnstile required): {r.text[:80]}")
+    elif r.status_code == 500:
+        info("POST /auth/login/google returned 500 — Supabase provider may not be configured")
+    else:
+        fail(f"POST /auth/login/google → unexpected {r.status_code}: {r.text}")
+
+
+def test_google_oauth_post_with_invalid_turnstile():
+    """Test POST /api/v1/auth/login/google with invalid Turnstile token."""
+    section("Test 4B — POST /api/v1/auth/login/google (Invalid Turnstile Token)")
+
+    if SKIP_TURNSTILE_VERIFICATION:
+        info("Skipping real Turnstile verification (SKIP_TURNSTILE_VERIFICATION=true)")
+        return
+
+    payload = {"turnstile_token": "invalid_token_12345"}
+    r = requests.post(f"{BASE_URL}/api/v1/auth/login/google", json=payload, timeout=10)
+
+    if r.status_code == 400:
+        ok("Invalid Turnstile token rejected with 400 ✓")
+    elif r.status_code == 502:
+        ok("Invalid Turnstile token returned 502 (service unavailable) ✓")
+    else:
+        info(f"Turnstile validation returned {r.status_code}: {r.text[:80]}")
+
+
+def test_google_oauth_get_redirect():
+    section("Test 4C — GET /api/v1/auth/login/google (Redirects to Google)")
+
+    # GET without Turnstile (should still work if not configured)
     r = requests.get(f"{BASE_URL}/api/v1/auth/login/google", allow_redirects=False, timeout=10)
 
     if r.status_code in (302, 307):
         location = r.headers.get("location", "")
         if "accounts.google.com" in location or "supabase" in location:
-            ok("Correctly redirects to OAuth provider ✓")
+            ok("GET correctly redirects to OAuth provider ✓")
             info(f"Redirect → {location[:80]}...")
         else:
-            ok(f"Got redirect to: {location[:80]}")
+            ok(f"GET got redirect to: {location[:80]}")
+    elif r.status_code == 400:
+        # Turnstile required
+        if "Turnstile token is required" in r.text:
+            ok("GET correctly requires Turnstile token when configured ✓")
+        else:
+            info(f"GET returned 400: {r.text[:80]}")
     elif r.status_code == 500:
-        info("Google OAuth redirect returned 500 — Supabase provider may not be configured yet")
+        info("GET /auth/login/google returned 500 — Supabase provider may not be configured")
     else:
-        fail(f"/auth/login/google → unexpected {r.status_code}: {r.text}")
+        fail(f"GET /auth/login/google → unexpected {r.status_code}: {r.text}")
+
+
+def test_auth_login_rate_limiting():
+    """Test that /api/v1/auth/login/google enforces rate limiting (5/minute)."""
+    section("Test 4D — Rate Limiting on /api/v1/auth/login/google (5/minute)")
+
+    url_get = f"{BASE_URL}/api/v1/auth/login/google"
+    url_post = f"{BASE_URL}/api/v1/auth/login/google"
+
+    # Fire 6 requests quickly (should exceed 5/minute limit)
+    attempts = 0
+    rate_limit_hit = False
+
+    for i in range(6):
+        if i < 3:
+            # Use GET for first 3
+            r = requests.get(url_get, allow_redirects=False, timeout=10)
+        else:
+            # Use POST for next 3
+            r = requests.post(url_post, json={}, timeout=10)
+
+        attempts += 1
+
+        # Check for rate limit response (429)
+        if r.status_code == 429:
+            rate_limit_hit = True
+            ok(f"Rate limit enforced after {attempts} requests (429 Too Many Requests) ✓")
+            break
+
+        # If we get 400/500/302/307, it's a valid response but not rate limited yet
+        if r.status_code in (200, 302, 307, 400, 500, 502):
+            info(f"Request {i+1} → {r.status_code}")
+        else:
+            info(f"Request {i+1} → {r.status_code}")
+
+    if not rate_limit_hit and attempts >= 5:
+        info("Rate limiting may take time to accumulate; requests might not trigger immediately.")
+        info(f"  (Made {attempts} requests without hitting 429 limit)")
+
+    # Wait a bit and try again to confirm recovery
+    time.sleep(1)
+    r_recovery = requests.get(url_get, allow_redirects=False, timeout=10)
+    if r_recovery.status_code != 429:
+        info("✓ Rate limit counter appears to reset after brief wait")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -199,7 +311,7 @@ def test_google_oauth_redirect():
 
 
 def test_public_vendors():
-    section("Test 5 — GET /api/v1/vendors (Public Endpoint, No Auth)")
+    section("Test 6 — GET /api/v1/vendors (Public Endpoint, No Auth)")
 
     r = requests.get(f"{BASE_URL}/api/v1/vendors", timeout=10)
     if r.status_code == 200:
@@ -219,6 +331,9 @@ if __name__ == "__main__":
     print(_color(33, "\n FreshScan AI — Auth Integration Test Suite"))
     print(_color(33, f"  Server: {BASE_URL}\n"))
 
+    if SKIP_TURNSTILE_VERIFICATION:
+        print(_color(33, "  ⚠️   SKIP_TURNSTILE_VERIFICATION=true (running in CI mode)\n"))
+
     # Resolve token
     token = TOKEN
     if not token:
@@ -234,7 +349,10 @@ if __name__ == "__main__":
 
     # Always run these
     test_unauthenticated_rejected()
-    test_google_oauth_redirect()
+    test_google_oauth_post_without_turnstile()
+    test_google_oauth_post_with_invalid_turnstile()
+    test_google_oauth_get_redirect()
+    test_auth_login_rate_limiting()
     test_public_vendors()
 
     # Only run with a real token

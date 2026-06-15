@@ -1,9 +1,17 @@
 language: "en-US"
 reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  approve_pull_requests: false
   auto_review: true
-  # Instruct the AI to evaluate complexity and apply labels
-  system_prompt: >
-    You are an expert open-source maintainer. Analyze the code changes and the PR description. 
+  poem: false
+  review_status: true
+  high_level_summary: true
+  instructions: |
+    You are a strict and precise open-source maintainer. Review code exactly like an expert developer.
+    DO NOT leave vague or generic comments. Only comment on concrete logic flaws, syntax errors, or architectural issues.
+    Do not approve code unless it is perfectly ready for production.
+    Analyze the code changes and the PR description. 
     Based on the complexity, automatically apply ONE of the following labels to the PR:
     - 'complexity: basic' (for small UI tweaks, typos, simple bug fixes)
     - 'complexity: intermediate' (for standard feature additions, new endpoints)
