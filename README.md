@@ -3,13 +3,13 @@
     <img src="public/fish.gif" alt="FreshScan AI Logo" width="96" style="border-radius: 12px;" />
   </a>
   <h1 align="center">FreshScan AI</h1>
-  <p align="center">
+  <h3 align="center">
     Real-time fish freshness assessment using Edge AI — ensure consumer safety, vendor transparency, and minimize food waste.
-    <br />
+    <br /><br>
     <a href="https://github.com/jpdevhub/FreshScanAi/issues/new?labels=bug">Report Bug</a>
     &middot;
     <a href="https://github.com/jpdevhub/FreshScanAi/issues/new?labels=feature">Request Feature</a>
-  </p>
+  </h3>
 </div>
 
 <div align="center">
@@ -24,19 +24,19 @@
 
 ## About
 
-FreshScan AI analyzes three biologically-significant freshness markers — gill, eye, and body — to produce a single Freshness Index (0–100). Inference runs in under 50ms directly on-device, and anonymized scan data is aggregated onto an interactive Market Trust Map to surface reliable vendor locations.
+FreshScan AI analyzes three biologically-significant freshness markers — **gill**, **eye**, and **body** — to produce a single Freshness Index (0–100). Inference runs in under 50ms directly on-device, and anonymized scan data is aggregated onto an interactive Market Trust Map to surface reliable vendor locations.
 
 ---
 
 ## Tech Stack
 
-| Category | Technology |
-|---|---|
-| Frontend | React 19, TypeScript, Vite, TailwindCSS |
-| Backend | FastAPI, Python 3.12 |
-| AI / ML | PyTorch, Grad-CAM |
-| Database | Supabase (Postgres + Auth + Storage) |
-| Deployment | Vercel (frontend), Hugging Face Spaces (backend) |
+| Category | Technology | Badges |
+| :--- | :--- | :--- |
+| **Frontend** | React 19, TypeScript, Vite, TailwindCSS | ![React](https://img.shields.io/badge/React_19-%2320232a.svg?style=flat-square&logo=react&logoColor=%2361DAFB) ![TypeScript](https://img.shields.io/badge/TypeScript-%23007ACC.svg?style=flat-square&logo=typescript&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-%23646CFF.svg?style=flat-square&logo=vite&logoColor=white) ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-%2338B2AC.svg?style=flat-square&logo=tailwind-css&logoColor=white) |
+| **Backend** | FastAPI, Python 3.12 | ![FastAPI](https://img.shields.io/badge/FastAPI-%23009688.svg?style=flat-square&logo=fastapi&logoColor=white) ![Python](https://img.shields.io/badge/Python_3.12-%233776AB.svg?style=flat-square&logo=python&logoColor=white) |
+| **AI / ML** | PyTorch, Grad-CAM | ![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=flat-square&logo=pytorch&logoColor=white) ![Grad-CAM](https://img.shields.io/badge/Grad--CAM-Computer_Vision-blueviolet?style=flat-square) |
+| **Database** | Supabase (Postgres + Auth + Storage) | ![Supabase](https://img.shields.io/badge/Supabase-%233ECF8E.svg?style=flat-square&logo=supabase&logoColor=white) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-%23316192.svg?style=flat-square&logo=postgresql&logoColor=white) |
+| **Deployment** | Vercel (frontend), Hugging Face Spaces (backend) | ![Vercel](https://img.shields.io/badge/Vercel-%23000000.svg?style=flat-square&logo=vercel&logoColor=white) ![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97_Hugging_Face-Spaces-FFD21E?style=flat-square) |
 
 ---
 

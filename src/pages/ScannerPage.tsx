@@ -253,6 +253,57 @@ export default function ScannerPage() {
 
         stopProgress(100);
         const freshness = Math.round(fusion.fusedScore * 100);
+        const offlineScanResult = {
+          scan_id: "offline-scan",
+          scan_display_id: "OFFLINE_SCAN",
+          freshness_index: freshness,
+          grade: deriveGrade(freshness),
+          confidence: parseFloat(fusion.confidence),
+          classification:
+            fusion.label === "Fresh"
+              ? "FRESH"
+              : fusion.label === "Moderate"
+                ? "FRESH"
+                : "SPOILED",
+          is_fresh: fusion.label !== "Spoiled",
+          uncertain_flag: false,
+          species: {
+            common_name: "Unknown Fish",
+            scientific_name: "N/A",
+            habitat: "N/A",
+            tags: [],
+            weight_estimate_kg: 0,
+            catch_age_hours: 0,
+          },
+          biomarkers: {
+            gill_saturation: {
+              score: freshness,
+              status: "NOMINAL",
+              detail: "Offline edge inference",
+            },
+            corneal_clarity: {
+              score: freshness,
+              status: "NOMINAL",
+              detail: "Offline edge inference",
+            },
+            epidermal_tension: {
+              score: freshness,
+              status: "NOMINAL",
+              detail: "Offline edge inference",
+            },
+          },
+          recommendations: {
+            consume_within_hours: 0,
+            storage_temp: "Unknown",
+            alert_flags: ["Generated from offline scan"],
+          },
+        };
+
+        sessionStorage.setItem(
+          "offlineScanResult",
+          JSON.stringify(offlineScanResult),
+        );
+
         setResult({
           label: fusion.label,
           freshness,

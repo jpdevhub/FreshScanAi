@@ -76,11 +76,26 @@ jobs:
           FRONTEND_URL: http://localhost:5173
           API_BASE_URL: http://localhost:8000
 
+  check-backend-changes:
+    name: Check Backend Changes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+
   deploy-backend-to-hf-spaces:
     name: Deploy Backend → HF Spaces
-    # Only deploy on push to main, not on PRs
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: backend-lint-and-test
+    # Only deploy on push to main if backend files changed
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check-backend-changes.outputs.backend == 'true'
+    needs: [backend-lint-and-test, check-backend-changes]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
