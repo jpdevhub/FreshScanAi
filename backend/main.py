@@ -11,13 +11,14 @@ from turnstile import TURNSTILE_SECRET_KEY, verify_turnstile_token
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from rate_limiter import limiter
+from chat_router import router as chat_router
 
 
 # Load .env file if present (python-dotenv)
 try:
     from dotenv import load_dotenv
 
-    load_dotenv(Path(__file__).parent / ".env")
+    load_dotenv(Path(__file__).parent / ".env", override=True)
 except ImportError:
     pass
 
@@ -126,6 +127,7 @@ app.add_middleware(
 app.state.limiter = limiter
 app.add_exception_handler(429, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+app.include_router(chat_router)
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):

@@ -13,8 +13,6 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | u
 export default function AuthPage() {
   const navigate = useNavigate();
   const posthog = usePostHog();
-  const [status, setStatus] = useState<'idle' | 'processing' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
   const { containerRef, ready: turnstileReady, execute: executeTurnstile, error: turnstileError } = useTurnstile(TURNSTILE_SITE_KEY);
   const [status, setStatus] = useState<'idle' | 'processing' | 'error'>(() => {
     const params = new URLSearchParams(window.location.search);

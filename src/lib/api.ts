@@ -184,4 +184,24 @@ export const api = {
 
   getMarkets: (): Promise<MarketsResponse> =>
     apiFetch<MarketsResponse>('/api/v1/maps/markets'),
+
+  chatMessage: (
+    question: string,
+    currentPage?: string,
+    currentFeature?: string,
+    history: Array<{ role: 'user' | 'assistant'; content: string }> = []
+  ): Promise<{ message_id: string; response: string }> =>
+    apiFetch<{ message_id: string; response: string }>('/api/v1/chat/message', {
+      method: 'POST',
+      body: JSON.stringify({ question, currentPage, currentFeature, history }),
+    }),
+
+  submitChatFeedback: (
+    messageId: string,
+    feedback: 'up' | 'down'
+  ): Promise<{ success: boolean }> =>
+    apiFetch<{ success: boolean }>('/api/v1/chat/feedback', {
+      method: 'POST',
+      body: JSON.stringify({ message_id: messageId, feedback }),
+    }),
 };
