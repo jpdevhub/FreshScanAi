@@ -82,13 +82,17 @@ export default function AnalysisDashboard() {
     const url = photo_url;
 
     let isMounted = true;
+    const controller = new AbortController();
 
     async function loadGradcam() {
+      setGradcamImage(null);
       setGradcamLoading(true);
       setGradcamError(null);
 
       try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+        signal: controller.signal,
+        });
 
         if (!res.ok) {
           throw new Error(`Failed to download scan image (${res.status})`);
@@ -101,6 +105,13 @@ export default function AnalysisDashboard() {
           setGradcamImage(gradcamRes.gradcam_image);
         }
       } catch (err) {
+         if (
+        err instanceof DOMException &&
+        err.name === "AbortError"
+          ) {
+        return;
+        }
+
         console.error("Grad-CAM generation error:", err);
 
         if (isMounted) {
@@ -120,7 +131,8 @@ export default function AnalysisDashboard() {
     loadGradcam();
 
     return () => {
-      isMounted = false;
+    isMounted = false;
+    controller.abort();
     };
   }, [photo_url, retryTrigger]);
 
@@ -218,7 +230,7 @@ export default function AnalysisDashboard() {
 
                     {/* Legend overlay */}
                     {blendOpacity > 0 && gradcamImage && (
-                      <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-black/60 flex items-center justify-center gap-1 z-25">
+                      <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-black/60 flex items-center justify-center gap-1 z-30">
                         {['#3b82f6', '#22c55e', '#eab308', '#ef4444'].map((c, i) => (
                           <div key={i} className="w-6 h-2" style={{ background: c }} />
                         ))}
