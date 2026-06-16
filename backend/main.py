@@ -14,6 +14,7 @@ from rate_limiter import limiter
 from chat_router import router as chat_router
 
 
+
 # Load .env file if present (python-dotenv)
 try:
     from dotenv import load_dotenv
@@ -99,21 +100,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="FreshScan AI", version="1.1.0", lifespan=lifespan)
 
+# Parse ADDITIONAL_CORS_ORIGINS from environment
+ADDITIONAL_CORS_ORIGINS = os.environ.get("ADDITIONAL_CORS_ORIGINS", "").split(",")
 _cors_origins = (
     ["*"]
     if CORS_ALLOW_ALL
     else [
         FRONTEND_URL,
-        # Current production frontend — always allow so a stale FRONTEND_URL
-        # env var doesn't lock out users.
-        "https://fresh-scanai.vercel.app",
-        # Extra comma-separated origins from env (e.g. preview deployments).
-        # ADDITIONAL_CORS_ORIGINS=https://preview.vercel.app,https://staging.example.com
-        *[
-            o.strip()
-            for o in os.environ.get("ADDITIONAL_CORS_ORIGINS", "").split(",")
-            if o.strip()
-        ],
+        "https://fresh-scanai.vercel.app",  # production frontend
+        *[origin.strip() for origin in ADDITIONAL_CORS_ORIGINS if origin.strip()],
     ]
 )
 
@@ -756,6 +751,22 @@ async def get_vendors():
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
+@app.get("/api/v1/vendors/leaderboard")
+async def get_vendor_leaderboard():
+    """Get vendor leaderboard sorted by trust score"""
+    try:
+        resp = (
+            _db()
+            .table("vendors")
+            .select("id, name, trust_score, total_scans, avg_freshness_score, lat, lng")
+            .order("trust_score", desc=True)
+            .limit(10)
+            .execute()
+        )
+        return {"success": True, "leaderboard": resp.data}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
 
 # ── MAP ───────────────────────────────────────────────────────────────────────
 
@@ -980,8 +991,9 @@ async def generate_gradcam(
 from vendors import router as vendors_router, register_routes
 
 register_routes(vendors_router, _db)
+from markets import router as markets_router
+app.include_router(markets_router)
 app.include_router(vendors_router)
-
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":

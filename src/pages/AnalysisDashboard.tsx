@@ -5,7 +5,6 @@ import GlassCard from '../components/GlassCard';
 import StatusTerminal from '../components/StatusTerminal';
 import { api } from '../lib/api';
 import type { ScanResult } from '../lib/types';
-
 const BIOMARKER_META = {
   gill_saturation: { label: 'Gill Saturation', icon: Droplets },
   corneal_clarity: { label: 'Corneal Clarity', icon: EyeIcon },
@@ -27,12 +26,14 @@ export default function AnalysisDashboard() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+
     async function load() {
       setLoading(true);
-      setError('');
+      setError("");
+
       try {
-        const idParam = params.get('id');
-        const lastId = sessionStorage.getItem('lastScanId');
+        const idParam = params.get("id");
+        const lastId = sessionStorage.getItem("lastScanId");
         const targetId = idParam || lastId;
 
         const res = targetId
@@ -41,16 +42,35 @@ export default function AnalysisDashboard() {
 
         setScan(res.scan);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load scan data.');
+        const offlineData = sessionStorage.getItem("offlineScanResult");
+
+        if (offlineData) {
+          try {
+            const parsed = JSON.parse(offlineData);
+
+            if (parsed?.freshness_index != null) {
+              setScan(parsed);
+              setLoading(false); 
+              return;
+            }
+          } catch (e) {
+            console.warn("Failed to parse offline scan result", e);
+          }
+        }
+
+        setError(
+          err instanceof Error ? err.message : "Failed to load scan data."
+        );
       } finally {
         setLoading(false);
       }
     }
+
     load();
   }, [params]);
 
-  // ── Loading state ────────────────────────────────────────────────────────
-  if (loading) {
+
+    if (loading) {
     return (
       <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
         <StatusTerminal messages={['LOADING_ANALYSIS...', 'FETCHING_RESULT']} />

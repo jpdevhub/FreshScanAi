@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import GlassCard from "../components/GlassCard";
@@ -49,12 +49,22 @@ const createCustomIcon = (score: number) => {
   });
 };
 
+function RecenterMap({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, map.getZoom());
+  }, [center, map]);
+  return null;
+}
+
 export default function MarketMapPage() {
   const [markers, setMarkers] = useState<Market[]>([]);
   const [selected, setSelected] = useState<Market | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tileUrl, setTileUrl] = useState(getActiveTile);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([22.5726, 88.3639]);
+  const [regionName, setRegionName] = useState("KOLKATA");
 
   // Watch for theme class changes on <html> without depending on custom events
   useEffect(() => {
@@ -66,24 +76,44 @@ export default function MarketMapPage() {
     return () => observer.disconnect();
   }, []);
 
-  const defaultPosition: [number, number] = [22.5726, 88.3639];
-
   useEffect(() => {
-    async function fetchMarkets() {
+    async function fetchLiveMarkets(lat: number, lng: number) {
       setLoading(true);
       try {
-        const res = await api.getMarkets();
-        setMarkers(res.markets);
+        const res = await api.getLiveMarkets(lat, lng);
+        setMarkers(res.markets || []);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load market data.",
-        );
-        console.error("Market fetch error:", err);
+        setError(err instanceof Error ? err.message : "Failed to load live market data.");
+        console.error("Live market fetch error:", err);
       } finally {
         setLoading(false);
       }
     }
-    fetchMarkets();
+
+    if ("geolocation" in navigator) {
+      setLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setMapCenter([latitude, longitude]);
+          setRegionName("LIVE GPS");
+          fetchLiveMarkets(latitude, longitude);
+        },
+        (err) => {
+          console.warn("Geolocation denied or failed, falling back to mock data.", err);
+          api.getMarkets()
+            .then(res => setMarkers(res.markets))
+            .catch(() => setError("Failed to load markets."))
+            .finally(() => setLoading(false));
+        },
+        { timeout: 10000, enableHighAccuracy: false }
+      );
+    } else {
+      api.getMarkets()
+        .then(res => setMarkers(res.markets))
+        .catch(() => setError("Failed to load markets."))
+        .finally(() => setLoading(false));
+    }
   }, []);
 
   return (
@@ -93,7 +123,7 @@ export default function MarketMapPage() {
         <StatusTerminal
           messages={[
             "TRUST_MAP",
-            "REGION: KOLKATA",
+            `REGION: ${regionName}`,
             loading
               ? "SYNCING_DB..."
               : error
@@ -118,11 +148,12 @@ export default function MarketMapPage() {
       {/* Map */}
       <div className="flex-1 relative z-10 min-h-0 bg-surface-lowest">
         <MapContainer
-          center={defaultPosition}
+          center={mapCenter}
           zoom={12}
           scrollWheelZoom={true}
           className="w-full h-full z-0"
         >
+          <RecenterMap center={mapCenter} />
           <TileLayer url={tileUrl} attribution="&copy; CARTO" />
           {markers.map((m) => (
             <Marker
