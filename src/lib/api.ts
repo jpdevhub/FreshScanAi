@@ -142,18 +142,6 @@ export const api = {
 
     return `${API_BASE}/api/v1/auth/login/google`;
   },
-      const response = await apiFetch<{ redirect_url: string }>(
-        "/api/v1/auth/login/google",
-        {
-          method: "POST",
-          body: JSON.stringify({ turnstile_token: turnstileToken }),
-        },
-      );
-      return response.redirect_url;
-    }
-
-    return `${API_BASE}/api/v1/auth/login/google`;
-  },
 
   getMe: (): Promise<UserProfile> => apiFetch<UserProfile>("/api/v1/auth/me"),
 
@@ -266,7 +254,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ message_id: messageId, feedback }),
     }),
-    apiFetch<MarketsResponse>("/api/v1/maps/markets"),
 
   getLiveMarkets: (
     lat: number,

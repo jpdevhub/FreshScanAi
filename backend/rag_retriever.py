@@ -103,9 +103,14 @@ class RAGRetriever:
             # Standard smooth IDF formula
             self.idf[word] = math.log(1.0 + (num_docs / (1.0 + df)))
 
-        print(f"RAG Indexing complete. Indexed {len(self.chunks)} chunks across {len(files_to_load)} files.")
+        print(
+            f"RAG Indexing complete. Indexed {len(self.chunks)} chunks "
+            f"across {len(files_to_load)} files."
+        )
 
-    def split_by_markdown_headers(self, source: str, content: str) -> List[Tuple[str, str, str]]:
+    def split_by_markdown_headers(
+        self, source: str, content: str
+    ) -> List[Tuple[str, str, str]]:
         """Parses markdown and splits it into chunks based on header sections."""
         chunks: List[Tuple[str, str, str]] = []
         lines = content.splitlines()
@@ -138,7 +143,9 @@ class RAGRetriever:
 
         return chunks
 
-    def split_large_text(self, source: str, heading: str, text: str, max_chars: int = 1500) -> List[Tuple[str, str, str]]:
+    def split_large_text(
+        self, source: str, heading: str, text: str, max_chars: int = 1500
+    ) -> List[Tuple[str, str, str]]:
         """Sub-splits a markdown section if it is too long to maintain granularity."""
         if len(text) <= max_chars:
             return [(source, heading, text)]

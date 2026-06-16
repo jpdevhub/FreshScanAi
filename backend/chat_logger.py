@@ -42,10 +42,21 @@ def log_chat_message(
     try:
         cursor.execute(
             """
-            INSERT INTO chat_logs (id, question, response, current_page, current_feature, timestamp, feedback)
+            INSERT INTO chat_logs (
+                id, question, response, current_page, current_feature,
+                timestamp, feedback
+            )
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (msg_id, question, response, current_page, current_feature, timestamp, None)
+            (
+                msg_id,
+                question,
+                response,
+                current_page,
+                current_feature,
+                timestamp,
+                None,
+            )
         )
         conn.commit()
     except Exception as e:
