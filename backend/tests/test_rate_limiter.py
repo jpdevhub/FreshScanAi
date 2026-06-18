@@ -43,3 +43,9 @@ def test_rate_limit_retry_after_header():
     assert len(rate_limited) > 0
     body = rate_limited[0].json()
     assert body is not None
+
+def test_maps_markets_not_rate_limited_initially():
+    """First request to maps/markets should not be rate limited."""
+    response = client.get("/api/v1/maps/markets")
+    assert response.status_code != 429
+

@@ -397,3 +397,24 @@ input::placeholder {
 @media print {
   nav, .print\:hidden { display: none !important; }
 }
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-mid) 25%,
+    var(--color-surface-highest) 50%,
+    var(--color-surface-mid) 75%
+  );
+
+  background-size: 200% 100%;
+  animation: shimmer 1.5s linear infinite;
+}

@@ -769,7 +769,8 @@ async def get_vendor_leaderboard():
 
 
 @app.get("/api/v1/maps/markets")
-async def get_markets():
+@limiter.limit("20/minute")
+async def get_markets(request: Request):
     try:
         resp = (
             _db()

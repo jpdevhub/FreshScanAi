@@ -5,6 +5,7 @@ import GlassCard from '../components/GlassCard';
 import StatusTerminal from '../components/StatusTerminal';
 import { api } from '../lib/api';
 import type { ScanResult } from '../lib/types';
+import ScanSkeleton from "../components/shared/ScanSkeleton";
 const BIOMARKER_META = {
   gill_saturation: { label: 'Gill Saturation', icon: Droplets },
   corneal_clarity: { label: 'Corneal Clarity', icon: EyeIcon },
@@ -91,7 +92,7 @@ export default function AnalysisDashboard() {
 
       try {
         const res = await fetch(url, {
-        signal: controller.signal,
+          signal: controller.signal,
         });
 
         if (!res.ok) {
@@ -105,11 +106,11 @@ export default function AnalysisDashboard() {
           setGradcamImage(gradcamRes.gradcam_image);
         }
       } catch (err) {
-         if (
-        err instanceof DOMException &&
-        err.name === "AbortError"
-          ) {
-        return;
+        if (
+          err instanceof DOMException &&
+          err.name === "AbortError"
+        ) {
+          return;
         }
 
         console.error("Grad-CAM generation error:", err);
@@ -131,8 +132,8 @@ export default function AnalysisDashboard() {
     loadGradcam();
 
     return () => {
-    isMounted = false;
-    controller.abort();
+      isMounted = false;
+      controller.abort();
     };
   }, [photo_url, retryTrigger]);
 
@@ -140,12 +141,9 @@ export default function AnalysisDashboard() {
     setRetryTrigger((prev) => prev + 1);
   };
 
+  // ── Loading state ────────────────────────────────────────────────────────
   if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
-        <StatusTerminal messages={['LOADING_ANALYSIS...', 'FETCHING_RESULT']} />
-      </div>
-    );
+    return <ScanSkeleton />;
   }
 
   // ── Error state ──────────────────────────────────────────────────────────
