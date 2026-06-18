@@ -26,7 +26,6 @@ const POSTHOG_HOST =
 if (POSTHOG_KEY) {
   posthog.init(POSTHOG_KEY, {
     api_host: POSTHOG_HOST,
-    defaults: '2026-01-30',
     // Loads async — won't block rendering
     loaded: (ph) => {
       // Disable in dev so local sessions don't pollute the dashboard

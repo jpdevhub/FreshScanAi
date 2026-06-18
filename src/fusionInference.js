@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 /**
  * Fish Freshness Fusion Inference Engine
@@ -24,7 +25,6 @@
 // ---------------------------------------------------------------------------
 
 const STREAM_A_CLASSES = ['C1 (Fresh)', 'C2 (Moderate)', 'C3 (Spoiled)'];
-const STREAM_B_CLASSES = ['Fresh_Eyes', 'Fresh_Gills', 'Nonfresh_Eyes', 'Nonfresh_Gills'];
 
 const STREAM_A_INPUT_SIZE = { width: 224, height: 224 };
 const STREAM_B_INPUT_SIZE = { width: 224, height: 224 };
@@ -85,22 +85,6 @@ function softmax(logits) {
 function temperatureScale(logits, temperature) {
   const scaled = logits.map(l => l / temperature);
   return softmax(scaled);
-}
-
-/**
- * Element-wise weighted sum of probability arrays.
- * @param {Array<{probs: number[], weight: number}>} streams
- * @returns {number[]} fused probability vector
- */
-function weightedFuse(streams) {
-  const len = streams[0].probs.length;
-  const out = new Array(len).fill(0);
-  for (const { probs, weight } of streams) {
-    for (let i = 0; i < len; i++) {
-      out[i] += probs[i] * weight;
-    }
-  }
-  return out;
 }
 
 /**

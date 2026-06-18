@@ -1,23 +1,25 @@
-import { Joyride, type Step } from "react-joyride";
+import Joyride, { type Step } from "react-joyride";
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   run: boolean;
 }
 
 export default function OnboardingTour({ run }: Props) {
+  const { t } = useTranslation();
   const steps: Step[] = [
     {
       target: "body",
-      content: "Welcome to FreshScanAI! Let's take a quick tour.",
+      content: t('onboarding.welcome'),
       placement: "center",
     },
     {
       target: "a[href='/scanner']",
-      content: "Use Scanner to analyze fish freshness.",
+      content: t('onboarding.scannerTip'),
     },
     {
       target: "a[href='/map']",
-      content: "View market insights and trust map here.",
+      content: t('onboarding.mapTip'),
     },
   ];
 
@@ -26,14 +28,25 @@ export default function OnboardingTour({ run }: Props) {
       steps={steps}
       run={run}
       continuous
+      showProgress
       styles={{
+        options: {
+          zIndex: 10000,
+          primaryColor: "#eab308",
+          backgroundColor: "#111111",
+          textColor: "#ffffff",
+          arrowColor: "#111111",
+        },
+        tooltip: {
+          borderRadius: 0,
+        },
         tooltipContainer: {
           border: "3px solid #eab308",
           borderRadius: 0,
           boxShadow: "none",
           textAlign: "left",
         },
-        buttonPrimary: {
+        buttonNext: {
           backgroundColor: "#eab308",
           color: "#000000",
           borderRadius: 0,
@@ -44,17 +57,6 @@ export default function OnboardingTour({ run }: Props) {
         buttonSkip: {
           color: "#ffffff",
         },
-        tooltip: {
-          borderRadius: 0,
-        },
-      }}
-      options={{
-        showProgress: true,
-        buttons: ["back", "close", "primary", "skip"],
-        primaryColor: "#eab308",
-        backgroundColor: "#111111",
-        textColor: "#ffffff",
-        zIndex: 10000,
       }}
     />
   );

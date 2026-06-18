@@ -1,9 +1,13 @@
 import { Outlet } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Navbar from './Navbar';
 import BottomNav from './BottomNav';
 import Footer from './Footer';
 
 export default function Layout() {
+  const { t } = useTranslation();
+
+    
   return (
     <div className="relative min-h-screen bg-bg overflow-hidden flex flex-col">
       {/* Dot Grid Background */}
@@ -11,7 +15,7 @@ export default function Layout() {
 
       {/* FS_AI Watermark */}
       <div className="watermark fixed -right-8 top-1/4 select-none pointer-events-none z-0">
-        FS_AI
+        {t('components.layout.watermark')}
       </div>
 
       {/* Navigation */}

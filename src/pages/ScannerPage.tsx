@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import {
   Camera,
   Zap,
@@ -14,6 +15,13 @@ import CameraOverlay from "../components/CameraOverlay";
 import { api, isAuthenticated } from "../lib/api";
 import { FishFreshnessInference } from "../fusionInference.js";
 import type { ScanResult } from "../lib/types";
+
+
+function translateResultLabel(label: DisplayResult['label'], t: (key: string) => string) {
+  if (label === 'Fresh') return t('scanner.fresh');
+  if (label === 'Moderate') return t('scanner.moderate');
+  return t('scanner.spoiled');
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -103,13 +111,15 @@ async function blobToImageElement(blob: Blob): Promise<HTMLImageElement> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ScannerPage() {
-  const navigate = useNavigate();
+  const { t } = useTranslation();
 
+    const navigate = useNavigate();
+  
   // ── State ──────────────────────────────────────────────────────────────────
   const [scanPhase, setScanPhase] = useState<ScanPhase>("idle");
   const [inferenceMode, setInferenceMode] = useState<InferenceMode>(null);
   const [result, setResult] = useState<DisplayResult | null>(null);
-  const [error, setError] = useState("");
+  const [errorKey, setErrorKey] = useState("");
   const [flashOn, setFlashOn] = useState(false);
   const [facingMode, setFacingMode] = useState<"environment" | "user">(
     "environment",
@@ -117,7 +127,7 @@ export default function ScannerPage() {
   const [progress, setProgress] = useState(0);
   const [copied, setCopied] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraErrorKey, setCameraErrorKey] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -143,7 +153,7 @@ export default function ScannerPage() {
           return;
         }
 
-        setCameraError(null);
+        setCameraErrorKey(null);
         streamRef.current = stream;
 
         if (currentVideo) {
@@ -157,18 +167,14 @@ export default function ScannerPage() {
 
         if (err instanceof DOMException) {
           if (err.name === "NotAllowedError") {
-            setCameraError("Camera permission was denied");
+            setCameraErrorKey('scanner.cameraPermissionDenied');
           } else if (err.name === "NotFoundError") {
-            setCameraError(
-              "No camera was found on this device. Please connect a camera and try again.",
-            );
+            setCameraErrorKey('scanner.cameraNotFound');
           } else {
-            setCameraError(
-              "Unable to access the camera. Please check your browser permissions and try again.",
-            );
+            setCameraErrorKey('scanner.cameraAccessError');
           }
         } else {
-          setCameraError("Something went wrong while accessing the camera.");
+          setCameraErrorKey('scanner.cameraSomethingWrong');
         }
       });
 
@@ -181,7 +187,7 @@ export default function ScannerPage() {
         currentVideo.srcObject = null;
       }
     };
-  }, [facingMode, scanPhase]);
+  }, [facingMode, scanPhase, t]);
 
   // ── Progress bar animation ─────────────────────────────────────────────────
   const startProgress = useCallback(() => {
@@ -208,7 +214,7 @@ export default function ScannerPage() {
     async (blob: Blob) => {
       setScanPhase("processing");
       startProgress();
-      setError("");
+      setErrorKey("");
       setInferenceMode(null);
       sessionStorage.removeItem("lastScanId");
 
@@ -254,57 +260,6 @@ export default function ScannerPage() {
 
         stopProgress(100);
         const freshness = Math.round(fusion.fusedScore * 100);
-        const offlineScanResult = {
-          scan_id: "offline-scan",
-          scan_display_id: "OFFLINE_SCAN",
-          freshness_index: freshness,
-          grade: deriveGrade(freshness),
-          confidence: parseFloat(fusion.confidence),
-          classification:
-            fusion.label === "Fresh"
-              ? "FRESH"
-              : fusion.label === "Moderate"
-                ? "FRESH"
-                : "SPOILED",
-          is_fresh: fusion.label !== "Spoiled",
-          uncertain_flag: false,
-          species: {
-            common_name: "Unknown Fish",
-            scientific_name: "N/A",
-            habitat: "N/A",
-            tags: [],
-            weight_estimate_kg: 0,
-            catch_age_hours: 0,
-          },
-          biomarkers: {
-            gill_saturation: {
-              score: freshness,
-              status: "NOMINAL",
-              detail: "Offline edge inference",
-            },
-            corneal_clarity: {
-              score: freshness,
-              status: "NOMINAL",
-              detail: "Offline edge inference",
-            },
-            epidermal_tension: {
-              score: freshness,
-              status: "NOMINAL",
-              detail: "Offline edge inference",
-            },
-          },
-          recommendations: {
-            consume_within_hours: 0,
-            storage_temp: "Unknown",
-            alert_flags: ["Generated from offline scan"],
-          },
-        };
-
-        sessionStorage.setItem(
-          "offlineScanResult",
-          JSON.stringify(offlineScanResult),
-        );
-
         setResult({
           label: fusion.label,
           freshness,
@@ -329,7 +284,6 @@ export default function ScannerPage() {
                   fused_score: fusion.fusedScore,
                   source: "edge_onnx",
                 },
-                { silent: true },
               );
               if (saved?.scan?.scan_id) {
                 sessionStorage.setItem("lastScanId", saved.scan.scan_id);
@@ -345,19 +299,18 @@ export default function ScannerPage() {
         setTimeout(() => navigate("/analysis"), 1800);
       } catch (err) {
         stopProgress(0);
-        const msg = err instanceof Error ? err.message : "Inference failed.";
+        const msg = err instanceof Error ? err.message : 'scanner.inferenceFailed';
         const isNotFish =
           msg.includes("NOT_A_FISH") ||
           msg.includes("not appear to contain a fish");
-        setError(
+        setErrorKey(
           isNotFish
-            ? "NOT_A_FISH: No fish detected. Please photograph a fish."
-            : msg,
+            ? 'scanner.notFishDetected'
+            : msg || 'scanner.inferenceFailed',
         );
         setScanPhase("error");
       }
-    },
-    [startProgress, stopProgress, stopCamera, navigate],
+    }, [startProgress, stopProgress, stopCamera, navigate]
   );
 
   // ── Camera capture ─────────────────────────────────────────────────────────
@@ -370,7 +323,7 @@ export default function ScannerPage() {
     if (!video) return;
     const blob = await captureVideoBlob(video);
     if (!blob) {
-      setError("Failed to capture frame.");
+      setErrorKey('scanner.failedCaptureFrame');
       return;
     }
     await runScan(blob);
@@ -399,7 +352,7 @@ export default function ScannerPage() {
   const resetScan = useCallback(() => {
     setScanPhase("idle");
     setResult(null);
-    setError("");
+    setErrorKey("");
     setInferenceMode(null);
     setProgress(0);
     if (previewUrl) {
@@ -419,16 +372,16 @@ export default function ScannerPage() {
 
   const terminalMessages = (() => {
     if (isScanning && inferenceMode === "edge")
-      return ["MODE: EDGE_ONNX", "RUNNING_LOCAL_INFERENCE..."];
+      return [t('scanner.modeEdgeOnnx'), t('scanner.runningLocalInference')];
     if (isScanning && inferenceMode === "cloud")
-      return ["MODE: CLOUD_API", "CONNECTING_TO_HF..."];
-    if (isScanning) return ["DETECTING_MODEL...", "PLEASE_WAIT"];
+      return [t('scanner.modeCloudApi'), t('scanner.connectingToHf')];
+    if (isScanning) return [t('scanner.detectingModel'), t('scanner.pleaseWait')];
     if (scanComplete && inferenceMode === "edge")
-      return ["MODEL: EDGE_ONNX", "DEVICE: ON_DEVICE", "LATENCY: <50ms"];
+      return [t('scanner.modelEdgeOnnx'), t('scanner.deviceOnDevice'), t('scanner.latencyValue')];
     if (scanComplete && inferenceMode === "cloud")
-      return ["MODEL: CLOUD_API", "DEVICE: HF_INFERENCE"];
-    if (scanPhase === "error") return ["SCAN_SEQ: FAILED", "CHECK_SPECIMEN"];
-    return ["SYSTEM: READY", "POINT_CAMERA_AT_FISH"];
+      return [t('scanner.modelCloudApi'), t('scanner.deviceHfInference')];
+    if (scanPhase === "error") return [t('scanner.scanSeqFailed'), errorKey ? t(errorKey) : t('scanner.checkSpecimen')];
+    return [t('scanner.systemReady'), t('scanner.pointCameraAtFish')];
   })();
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -441,21 +394,20 @@ export default function ScannerPage() {
           {previewUrl && !isScanning ? (
             <img
               src={previewUrl}
-              alt="Captured"
+              alt={t('scanner.capturedAlt')}
               className="absolute inset-0 w-full h-full object-contain z-0 bg-surface-lowest"
             />
-          ) : cameraError ? (
+          ) : cameraErrorKey ? (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-black px-6 text-center text-white">
               <div className="max-w-sm">
                 <h3 className="mb-2 text-lg font-semibold">
-                  Camera Access Needed
+                  {t('scanner.cameraAccessNeeded')}
                 </h3>
 
-                <p className="text-sm text-gray-300">{cameraError}</p>
+                <p className="text-sm text-gray-300">{t(cameraErrorKey)}</p>
 
                 <p className="mt-3 text-xs text-gray-400">
-                  Click the camera icon in your browser's address bar, allow
-                  camera access, and refresh the page.
+                  {t('scanner.cameraInstructions')}
                 </p>
               </div>
             </div>
@@ -502,16 +454,16 @@ export default function ScannerPage() {
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
               {scanPhase === "idle" && (
                 <>
-                  {!cameraError && (
+                  {!cameraErrorKey && (
                     <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-on-surface-variant">
-                      POINT_AT_FISH
+                      {t('scanner.pointAtFish')}
                     </span>
                   )}
                 </>
               )}
               {isScanning && (
                 <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-neon data-stream">
-                  ANALYZING_BIOMARKERS
+                  {t('scanner.analyzingBiomarkers')}
                 </span>
               )}
               {scanComplete && result && (
@@ -519,16 +471,16 @@ export default function ScannerPage() {
                   <span
                     className={`font-[family-name:var(--font-display)] text-4xl font-bold block ${labelColor(result.label)}`}
                   >
-                    {result.label.toUpperCase()}
+                    {translateResultLabel(result.label, t).toUpperCase()}
                   </span>
                   <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-secondary block mt-1">
-                    {result.confidence} · GRADE {result.grade}
+                    {result.confidence} · {t('scanner.gradePrefix')}{result.grade}
                   </span>
                 </div>
               )}
               {scanPhase === "error" && (
                 <span className="font-[family-name:var(--font-mono)] text-[0.55rem] tracking-widest text-error text-center px-6">
-                  {error}
+                  {t(errorKey)}
                 </span>
               )}
             </div>
@@ -592,12 +544,12 @@ export default function ScannerPage() {
                     className="flex-1 py-4 bg-neon text-on-primary font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer border-none flex items-center justify-center gap-3 hover:bg-neon-dim pulse-glow transition-all duration-200"
                   >
                     <Camera size={18} />
-                    CAPTURE_FISH
+                    {t('scanner.captureButton')}
                   </button>
                   <button
                     onClick={toggleCamera}
                     className="w-14 bg-surface-high flex items-center justify-center text-on-surface-variant hover:text-neon transition-colors cursor-pointer border-none"
-                    aria-label="Switch camera"
+                    aria-label={t('scanner.switchCamera')}
                   >
                     <SwitchCamera size={18} />
                   </button>
@@ -609,7 +561,7 @@ export default function ScannerPage() {
                   className="w-full py-3 bg-surface-mid text-on-surface font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer border border-on-surface-variant/30 hover:border-neon hover:text-neon flex items-center justify-center gap-3 transition-all duration-200"
                 >
                   <Upload size={16} />
-                  UPLOAD_PHOTO
+                  {t('scanner.uploadButton')}
                 </button>
 
                 <input
@@ -628,8 +580,8 @@ export default function ScannerPage() {
                 <Zap size={18} className="text-neon animate-pulse" />
                 <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-neon">
                   {inferenceMode === "edge"
-                    ? "RUNNING_EDGE_INFERENCE..."
-                    : "RUNNING_CLOUD_INFERENCE..."}
+                    ? t('scanner.runningEdgeInference')
+                    : t('scanner.runningCloudInference')}
                 </span>
               </div>
             )}
@@ -640,9 +592,7 @@ export default function ScannerPage() {
                 {/* Freshness score bar */}
                 <div className="bg-surface-mid border border-on-surface-variant/20 p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-[family-name:var(--font-mono)] text-[0.55rem] tracking-widest text-on-surface-variant">
-                      FRESHNESS_INDEX
-                    </span>
+                    <span className="font-[family-name:var(--font-mono)] text-[0.55rem] tracking-widest text-on-surface-variant">{t('canner.freshnessIndex')}</span>
                     <span
                       className={`font-[family-name:var(--font-display)] text-lg font-bold ${labelColor(result.label)}`}
                     >
@@ -662,7 +612,7 @@ export default function ScannerPage() {
                     onClick={() => navigate("/analysis")}
                     className="flex-1 py-3 bg-neon text-on-primary font-[family-name:var(--font-display)] font-bold text-xs tracking-wider border-none cursor-pointer flex items-center justify-center hover:bg-neon-dim transition-all duration-200"
                   >
-                    VIEW_ANALYSIS
+                    {t('scanner.viewAnalysisButton')}
                   </button>
                   <button
                     onClick={resetScan}
@@ -687,7 +637,7 @@ export default function ScannerPage() {
                     }}
                     className="w-full py-3 bg-secondary text-on-primary font-[family-name:var(--font-display)] font-bold text-sm tracking-wider cursor-pointer border-none transition-colors hover:brightness-110 flex items-center justify-center gap-2"
                   >
-                    {copied ? "COPIED TO CLIPBOARD" : "SHARE GRADE-A REPORT"}
+                    {copied ? t('scanner.copiedToClipboard') : t('scanner.shareGradeReport')}
                   </button>
                 )}
               </div>
@@ -697,7 +647,7 @@ export default function ScannerPage() {
             {scanPhase === "error" && (
               <div className="flex gap-3 mb-4">
                 <span className="flex-1 font-[family-name:var(--font-mono)] text-[0.55rem] tracking-widest text-error self-center">
-                  {error}
+                  {t(errorKey)}
                 </span>
                 <button
                   onClick={resetScan}

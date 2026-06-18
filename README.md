@@ -53,6 +53,7 @@ FreshScanAi/
 │   ├── components/
 │   ├── pages/             # Scanner, Dashboard, MarketMap
 │   ├── lib/               # API client and utilities
+│   ├── i18n/              # Translations (Hindi, Bengali)
 │   └── App.tsx
 ├── public/                # Static assets
 ├── Models/                # Pre-compiled PyTorch model weights

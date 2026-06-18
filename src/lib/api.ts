@@ -1,4 +1,3 @@
-import toast from "react-hot-toast";
 import type {
   ScanResult,
   HistoryScan,
@@ -43,39 +42,38 @@ function authHeaders(): Record<string, string> {
 
 async function handleResponse(
   res: Response,
-  options?: ApiRequestOptions,
 ): Promise<Response> {
   if (res.ok) return res;
 
   if (res.status >= 500) {
-    const msg = "Server error. Please try again later.";
-
-    if (!options?.silent) {
-      toast.error(msg);
-    }
-
-    throw new Error(msg);
+    // Throw a translation key instead of a translated message.
+    // The UI component will handle the translation.
+    throw new Error('error.serverError');
   }
 
-  const err = await res.json().catch(() => ({ detail: res.statusText }));
-  throw new Error((err as { detail?: string }).detail || `HTTP ${res.status}`);
+  // Try to parse the error detail from the backend
+  const errJson = await res.json().catch(() => ({ detail: res.statusText }));
+  const detail = (errJson as { detail?: string }).detail || `HTTP ${res.status}`;
+
+  // Check for specific, known error strings from the backend and translate them.
+  if (detail.includes('supabase_url is required')) {
+    // Throw a translation key for the UI to handle.
+    throw new Error('error.auth.supabaseConfig');
+  }
+
+  throw new Error(detail);
 }
-type ApiRequestOptions = {
-  silent?: boolean;
-};
 async function safeFetch(
   input: RequestInfo | URL,
   init?: RequestInit,
-  options?: ApiRequestOptions,
 ): Promise<Response> {
   try {
     const res = await fetch(input, init);
-    return await handleResponse(res, options);
+    return await handleResponse(res);
   } catch (error) {
-    if (error instanceof TypeError && !options?.silent) {
-      toast.error(
-        "Unable to connect to the server. Please check your internet connection.",
-      );
+    if (error instanceof TypeError) {
+      // For network errors, throw a specific translation key.
+      throw new Error('error.network.connection');
     }
 
     console.error("API Error:", error);
@@ -120,6 +118,20 @@ export interface GradcamResponse {
   mode: "real" | "demo";
 }
 
+export interface LeaderboardEntry {
+  id: string;
+  name: string;
+  trust_score: number;
+  total_scans: number;
+  avg_freshness_score: number;
+  lat: number;
+  lng: number;
+}
+export interface LeaderboardResponse {
+  success: boolean;
+  leaderboard: LeaderboardEntry[];
+}
+
 // Metadata sent alongside edge-inference results so the backend can store them
 // without re-running the ML pipeline on the server.
 export interface EdgeInferenceMeta {
@@ -154,7 +166,6 @@ export const api = {
   submitScan: async (
     blob: Blob,
     meta?: EdgeInferenceMeta,
-    options?: ApiRequestOptions,
   ): Promise<ScanResponse> => {
     const form = new FormData();
     form.append("image", blob, "scan.jpg");
@@ -173,7 +184,6 @@ export const api = {
         headers: authHeaders(),
         body: form,
       },
-      options,
     );
 
     return validRes.json() as Promise<ScanResponse>;
@@ -246,4 +256,7 @@ export const api = {
     apiFetch<MarketsResponse>(
       `/api/v1/maps/markets/live?lat=${lat}&lng=${lng}&radius=${radius}`,
     ),
+
+  getLeaderboard: (): Promise<LeaderboardResponse> =>
+    apiFetch<LeaderboardResponse>("/api/v1/vendors/leaderboard"),
 };

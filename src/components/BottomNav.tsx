@@ -1,14 +1,17 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ScanLine, Map, Layers } from 'lucide-react';
 
-const navItems = [
-  { to: '/scanner', icon: ScanLine, label: 'SCANNER' },
-  { to: '/map', icon: Map, label: 'MAP' },
-  { to: '/mode', icon: Layers, label: 'MODE' },
-];
-
 export default function BottomNav() {
-  const location = useLocation();
+  const { t } = useTranslation();
+
+    const location = useLocation();
+  
+  const navItems = [
+    { to: '/scanner', icon: ScanLine, label: t('components.bottomNav.scanner') },
+    { to: '/map', icon: Map, label: t('components.bottomNav.map') },
+    { to: '/mode', icon: Layers, label: t('components.bottomNav.mode') },
+  ];
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-panel border-t border-outline-variant/15">

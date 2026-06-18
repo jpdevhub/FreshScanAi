@@ -9,7 +9,8 @@ import { api, isAuthenticated } from '../lib/api';
  * actually reloads between routes.
  */
 export default function PostHogPageView() {
-  const location = useLocation();
+
+    const location = useLocation();
   const posthog = usePostHog();
 
   useEffect(() => {
@@ -44,3 +45,4 @@ export default function PostHogPageView() {
 
   return null;
 }
+
