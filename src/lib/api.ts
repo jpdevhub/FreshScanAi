@@ -204,19 +204,16 @@ export const api = {
         headers: authHeaders(),
         body: form,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(
-          (err as { detail?: string }).detail || `HTTP ${res.status}`,
-        );
-      }
-      return res.json() as Promise<ScanResponse>;
+      // Use the centralized response handler which throws i18n keys for errors
+      const handledRes = await handleResponse(res);
+      return handledRes.json() as Promise<ScanResponse>;
     } catch (err) {
       if (err instanceof TypeError) {
         // Network offline — silent fallback to ONNX
         return null;
       }
-      throw err; // Server error (e.g. NOT_A_FISH) — propagate
+      // Propagate other errors (which may be i18n keys from handleResponse)
+      throw err;
     }
   },
 
@@ -260,3 +257,4 @@ export const api = {
   getLeaderboard: (): Promise<LeaderboardResponse> =>
     apiFetch<LeaderboardResponse>("/api/v1/vendors/leaderboard"),
 };
+
