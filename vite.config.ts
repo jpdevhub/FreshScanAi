@@ -14,12 +14,10 @@ export default defineConfig({
       manifest: false,
       workbox: {
         // Precache ONLY small app-shell assets (JS/CSS/HTML/icons).
-        // DO NOT include .wasm or .onnx here — they are large (12–26 MB each)
-        // and would cause the Service Worker install to time out.
+        // DO NOT include .wasm or .onnx here — they are large (12–26 MB each) and would cause the Service Worker install to time out.
         // They are handled below with lazy runtime caching instead.
         globPatterns: ['**/*.{js,css,html,ico,svg,gif,png}'],
-        // Runtime caching: WASM and ONNX files are cached on first use
-        // (CacheFirst) so subsequent offline scans load instantly.
+        // Runtime caching: WASM and ONNX files are cached on first use (CacheFirst) so subsequent offline scans load instantly.
         runtimeCaching: [
           {
             urlPattern: /\/models\/.*\.onnx$/i,
@@ -46,15 +44,20 @@ export default defineConfig({
 
   server: {
     // In local dev, proxy /api/* to the FastAPI backend at :8000.
-    // This avoids CORS issues and means the frontend never needs to
-    // hard-code the backend port.
-    // In production, VITE_API_URL is set externally so this block is unused.
+    // This avoids CORS issues and means the frontend never needs to hard-code the backend port. In production, VITE_API_URL is set externally so this block is unused.
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },
+    // Exclude large directories from file watching to prevent ENOSPC errors.
+    // The .venv and node_modules directories contain thousands of files that do not need to be watched for changes during development.
+    watch: {
+      ignored: [
+        '**/.venv/**',
+        '**/node_modules/**',
+      ],
+    },
   },
 });
-
