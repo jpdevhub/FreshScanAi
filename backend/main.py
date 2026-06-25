@@ -11,13 +11,18 @@ from turnstile import TURNSTILE_SECRET_KEY, verify_turnstile_token
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from rate_limiter import limiter
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
+from fastapi_cache.decorator import cache
+from chat_router import router as chat_router
+
 
 
 # Load .env file if present (python-dotenv)
 try:
     from dotenv import load_dotenv
 
-    load_dotenv(Path(__file__).parent / ".env")
+    load_dotenv(Path(__file__).parent / ".env", override=True)
 except ImportError:
     pass
 
@@ -32,11 +37,12 @@ from PIL import Image
 try:
     from inference import load_models, predict_stream_a, predict_stream_b
     from fusion import process_and_fuse
-    from species import load_species_model, predict_species
+    from species import load_species_model, predict_species, SPECIES_METADATA
 
     _torch_available = True
 except ModuleNotFoundError:
     _torch_available = False
+    SPECIES_METADATA = {}
     print("WARNING: PyTorch not installed. Scan endpoints will return 503.")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -99,6 +105,7 @@ async def lifespan(app: FastAPI):
             )
         # Load species classifier (optional — falls back to default if missing)
         load_species_model(str(sp))
+    FastAPICache.init(InMemoryBackend(), prefix="freshscanai-cache")
     yield
 
 
@@ -126,6 +133,7 @@ app.add_middleware(
 app.state.limiter = limiter
 app.add_exception_handler(429, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+app.include_router(chat_router)
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
@@ -301,7 +309,6 @@ def _row_to_payload(row: dict) -> dict:
 
     # Use species_detected from DB or fallback
     species_name = row.get("species_detected") or "Rohu Carp"
-    from species import SPECIES_METADATA
     metadata = SPECIES_METADATA.get(species_name, {"scientific_name": "Labeo rohita", "habitat": "Freshwater"})
 
     return {
@@ -513,6 +520,7 @@ async def process_scan(
 
     # Classify species from the body image
     species_info = predict_species(img_body)
+    species_label = "unclassified" if species_info["confidence"] == 0 else species_info["common_name"]
     payload = _build_scan_payload(fusion, scan_id, display_id, species_info=species_info)
 
     try:
@@ -526,7 +534,7 @@ async def process_scan(
                 "image_type": "full_scan",
                 "freshness_index": payload["freshness_index"],
                 "scan_display_id": display_id,
-                "species_detected": species_info["common_name"],
+                "species_detected": species_label,
                 "biomarker_json": payload["biomarkers"],
                 "storage_hours": payload["recommendations"]["consume_within_hours"],
                 "alert_flags": payload["recommendations"]["alert_flags"],
@@ -634,6 +642,7 @@ async def scan_auto(
 
     # Classify species from the uploaded image
     species_info = predict_species(img)
+    species_label = "unclassified" if species_info["confidence"] == 0 else species_info["common_name"]
     payload = _build_scan_payload(fusion, scan_id, display_id, photo_url, species_info=species_info)
 
     try:
@@ -646,7 +655,7 @@ async def scan_auto(
                 "image_type": image_type.value,
                 "freshness_index": payload["freshness_index"],
                 "scan_display_id": display_id,
-                "species_detected": species_info["common_name"],
+                "species_detected": species_label,
                 "biomarker_json": payload["biomarkers"],
                 "storage_hours": payload["recommendations"]["consume_within_hours"],
                 "alert_flags": payload["recommendations"]["alert_flags"],
@@ -794,31 +803,35 @@ async def get_vendor_leaderboard():
 # ── MAP ───────────────────────────────────────────────────────────────────────
 
 
+@cache(expire=300, namespace="markets")
+async def _get_markets_cached() -> dict:
+    resp = (
+        _db()
+        .table("vendors")
+        .select("id, name, avg_freshness_score, trust_score, lat, lng, vendor_count")
+        .execute()
+    )
+    markets = [
+        {
+            "id": i + 1,
+            "name": v["name"],
+            "score": int(v.get("avg_freshness_score") or v.get("trust_score") or 0),
+            "lat": float(v.get("lat") or 0),
+            "lng": float(v.get("lng") or 0),
+            "vendors": int(v.get("vendor_count") or 1),
+        }
+        for i, v in enumerate(resp.data or [])
+        if v.get("lat") and v.get("lng")
+    ]
+    return {"success": True, "markets": markets}
+
+
 @app.get("/api/v1/maps/markets")
 @limiter.limit("20/minute")
 async def get_markets(request: Request):
     try:
-        resp = (
-            _db()
-            .table("vendors")
-            .select("id, name, avg_freshness_score, trust_score, lat, lng, vendor_count")
-            .execute()
-        )
-        markets = [
-            {
-                "id": i + 1,
-                "name": v["name"],
-                "score": int(v.get("avg_freshness_score") or v.get("trust_score") or 0),
-                "lat": float(v.get("lat") or 0),
-                "lng": float(v.get("lng") or 0),
-                "vendors": int(v.get("vendor_count") or 1),
-            }
-            for i, v in enumerate(resp.data or [])
-            if v.get("lat") and v.get("lng")
-        ]
-        return {"success": True, "markets": markets}
+        return await _get_markets_cached()
     except Exception:
-        # Migration not applied yet — return empty markets, map still renders
         return {
             "success": True,
             "markets": [],

@@ -18,8 +18,8 @@ Dataset structure expected:
             Catla Carp/
                 ...
 
-If no dataset is available, the script generates synthetic training data
-from publicly available fish images for demonstration purposes.
+The script requires dataset folders to exist. Exits with an error if
+the training directory is not found.
 """
 
 import argparse
@@ -68,18 +68,28 @@ def train_model(data_dir: str, epochs: int = 20, batch_size: int = 32, lr: float
         print("  data_dir/val/<species_name>/images...")
         sys.exit(1)
 
-    train_dataset = datasets.ImageFolder(str(train_dir), transform=train_transform)
-    val_dataset = datasets.ImageFolder(str(val_dir), transform=val_transform) if val_dir.exists() else None
+    # ImageFolder sorts class names alphabetically; we need to remap to SPECIES_LABELS order
+    temp_dataset = datasets.ImageFolder(str(train_dir))
+    sorted_class_names = sorted(temp_dataset.classes)
+    class_to_sorted_idx = {name: idx for idx, name in enumerate(sorted_class_names)}
+    sorted_idx_to_species_idx = {class_to_sorted_idx[name]: SPECIES_LABELS.index(name)
+                                  for name in sorted_class_names if name in SPECIES_LABELS}
+
+    def target_transform(label):
+        return sorted_idx_to_species_idx.get(label, label)
+
+    train_dataset = datasets.ImageFolder(str(train_dir), transform=train_transform, target_transform=target_transform)
+    val_dataset = datasets.ImageFolder(str(val_dir), transform=val_transform, target_transform=target_transform) if val_dir.exists() else None
 
     # Verify class mapping matches our labels
-    class_to_idx = train_dataset.class_to_idx
+    class_to_idx = temp_dataset.class_to_idx
     print(f"Found {len(class_to_idx)} classes: {list(class_to_idx.keys())}")
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0) if val_dataset else None
 
     # ── Model ───────────────────────────────────────────────────────────────
-    num_classes = len(class_to_idx)
+    num_classes = NUM_SPECIES
     model = get_species_model(num_classes)
     model.to(device)
 

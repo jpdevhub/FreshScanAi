@@ -91,18 +91,23 @@ def load_species_model(weights_path: str):
         print(f"WARNING: Species model not found at {path}. Using default species.")
         return
 
-    _species_model = get_species_model()
-    checkpoint = torch.load(path, map_location=device, weights_only=True)
+    try:
+        _species_model = get_species_model()
+        checkpoint = torch.load(path, map_location=device, weights_only=True)
 
-    if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
-        _species_model.load_state_dict(checkpoint["model_state_dict"])
-    else:
-        _species_model.load_state_dict(checkpoint)
+        if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+            _species_model.load_state_dict(checkpoint["model_state_dict"])
+        else:
+            _species_model.load_state_dict(checkpoint)
 
-    _species_model.to(device)
-    _species_model.eval()
-    _species_loaded = True
-    print(f"Species model loaded from {path}")
+        _species_model.to(device)
+        _species_model.eval()
+        _species_loaded = True
+        print(f"Species model loaded from {path}")
+    except Exception as exc:
+        _species_model = None
+        _species_loaded = False
+        print(f"WARNING: Failed to load species model from {path}: {exc}. Using default species.")
 
 
 # ── Inference ───────────────────────────────────────────────────────────────

@@ -58,6 +58,7 @@ export default function Navbar() {
     { to: '/', label: t('home') },
     { to: '/scanner', label: t('scanner') },
     { to: '/map', label: t('trustMap') },
+    { to: '/faq', label: 'FAQ' },
   ];
 
   return (
@@ -169,3 +170,4 @@ export default function Navbar() {
     </nav>
   );
 }
+

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime, timedelta, timezone
 from auth import get_current_user
+from fastapi_cache import FastAPICache
 
 router = APIRouter(prefix="/api/v1/vendors", tags=["vendors"])
 
@@ -127,6 +128,8 @@ def register_routes(router: APIRouter, db_getter):
                     "trend": trend,
                 }
             ).eq("id", vendor_id).execute()
+
+            await FastAPICache.clear(namespace="markets")
 
             return {
                 "success": True,

@@ -51,7 +51,8 @@ const THRESHOLD_MODERATE = 0.35; // score >= 0.35 → Moderate, else Spoiled
 // the image is unlikely to be a fish (all-class uncertainty).
 // Note: the ONNX model was trained only on fish, so non-fish images may still
 // score above this — treat as a best-effort guard, not a hard detector.
-const NOT_A_FISH_THRESHOLD = 0.36;
+// Increased to 0.55 from 0.36 to better reject non-fish objects (e.g. human faces).
+const NOT_A_FISH_THRESHOLD = 0.55;
 
 // Default model paths (relative to Vite public/ folder)
 const DEFAULT_MODEL_PATHS = {

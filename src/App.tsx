@@ -11,6 +11,7 @@ import AnalysisDashboard from './pages/AnalysisDashboard';
 import MarketMapPage from './pages/MarketMapPage';
 import ResultsPage from './pages/ResultsPage';
 import Leaderboard from './pages/Leaderboard';
+import FAQPage from './pages/FAQPage';
 import PostHogPageView from './components/PostHogPageView';
 import NotFound from './pages/NotFound';
 import InstallPrompt from './components/InstallPrompt';
@@ -48,7 +49,8 @@ useEffect(() => {
           <Route path="/map" element={<MarketMapPage />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/results" element={<ResultsPage />} />
-          
+          <Route path="/faq" element={<FAQPage />} />
+
           {/* Public shareable report — MUST be before the * catchall */}
           <Route path="/report/:id" element={<PublicReport />} />
 
@@ -59,3 +61,6 @@ useEffect(() => {
     </BrowserRouter>
   );
 }
+
+
+
