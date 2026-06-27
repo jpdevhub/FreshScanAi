@@ -309,7 +309,8 @@ def _row_to_payload(row: dict) -> dict:
 
     # Use species_detected from DB or fallback
     species_name = row.get("species_detected") or "Rohu Carp"
-    metadata = SPECIES_METADATA.get(species_name, {"scientific_name": "Labeo rohita", "habitat": "Freshwater"})
+    default_meta = {"scientific_name": "Labeo rohita", "habitat": "Freshwater"}
+    metadata = SPECIES_METADATA.get(species_name, default_meta)
 
     return {
         "scan_id": row["id"],
@@ -324,7 +325,11 @@ def _row_to_payload(row: dict) -> dict:
             "common_name": species_name,
             "scientific_name": metadata["scientific_name"],
             "habitat": metadata["habitat"],
-            "tags": [species_name.upper(), metadata["scientific_name"].upper(), metadata["habitat"].upper()],
+            "tags": [
+                species_name.upper(),
+                metadata["scientific_name"].upper(),
+                metadata["habitat"].upper(),
+            ],
             "weight_estimate_kg": 1.2,
             "catch_age_hours": 6,
         },
@@ -520,8 +525,14 @@ async def process_scan(
 
     # Classify species from the body image
     species_info = predict_species(img_body)
-    species_label = "unclassified" if species_info["confidence"] == 0 else species_info["common_name"]
-    payload = _build_scan_payload(fusion, scan_id, display_id, species_info=species_info)
+    species_label = (
+        "unclassified"
+        if species_info["confidence"] == 0
+        else species_info["common_name"]
+    )
+    payload = _build_scan_payload(
+        fusion, scan_id, display_id, species_info=species_info
+    )
 
     try:
         _db().table("scans").insert(
@@ -577,7 +588,18 @@ async def scan_auto(
             },
         }
         photo_url = await _upload_image(image_bytes, str(current_user.id), scan_id)
-        payload = _build_scan_payload(demo_fusion, scan_id, display_id, photo_url, species_info={"common_name": "Rohu Carp", "scientific_name": "Labeo rohita", "habitat": "Freshwater"})
+        species_info = {
+            "common_name": "Rohu Carp",
+            "scientific_name": "Labeo rohita",
+            "habitat": "Freshwater",
+        }
+        payload = _build_scan_payload(
+            demo_fusion,
+            scan_id,
+            display_id,
+            photo_url,
+            species_info=species_info,
+        )
 
         try:
             _db().table("scans").insert(
@@ -642,8 +664,14 @@ async def scan_auto(
 
     # Classify species from the uploaded image
     species_info = predict_species(img)
-    species_label = "unclassified" if species_info["confidence"] == 0 else species_info["common_name"]
-    payload = _build_scan_payload(fusion, scan_id, display_id, photo_url, species_info=species_info)
+    species_label = (
+        "unclassified"
+        if species_info["confidence"] == 0
+        else species_info["common_name"]
+    )
+    payload = _build_scan_payload(
+        fusion, scan_id, display_id, photo_url, species_info=species_info
+    )
 
     try:
         _db().table("scans").insert(
