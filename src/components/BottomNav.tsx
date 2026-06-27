@@ -1,5 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ScanLine, Map, Layers } from 'lucide-react';
+import { ScanLine, Map, Layers, Languages, SunMoon } from 'lucide-react';
+import { useTranslation } from "react-i18next";
+import { toggleTheme } from '../lib/theme';
 
 const navItems = [
   { to: '/scanner', icon: ScanLine, label: 'SCANNER' },
@@ -9,6 +11,7 @@ const navItems = [
 
 export default function BottomNav() {
   const location = useLocation();
+  const { i18n } = useTranslation();
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-panel border-t border-outline-variant/15">
@@ -29,6 +32,31 @@ export default function BottomNav() {
             </Link>
           );
         })}
+                <button
+          type="button"
+          onClick={toggleTheme}
+          className="flex flex-col items-center gap-1 text-on-surface-variant hover:text-neon transition-colors duration-200"
+          aria-label="Toggle theme"
+        >
+          <SunMoon size={20} strokeWidth={1.5} />
+          <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest">
+            THEME
+          </span>
+        </button>
+
+        <label className="flex flex-col items-center gap-1 text-on-surface-variant">
+          <Languages size={20} strokeWidth={1.5} />
+          <select
+            value={i18n.language}
+            onChange={(e) => i18n.changeLanguage(e.target.value)}
+            className="bg-transparent font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest outline-none"
+            aria-label="Change language"
+          >
+            <option value="en">EN</option>
+            <option value="hi">HI</option>
+            <option value="bn">BN</option>
+          </select>
+        </label>
       </div>
     </nav>
   );
