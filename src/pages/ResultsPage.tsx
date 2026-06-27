@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight , Copy } from 'lucide-react';
+import toast from 'react-hot-toast';
 import GlassCard from '../components/GlassCard';
 import StatusTerminal from '../components/StatusTerminal';
 import { api } from '../lib/api';
@@ -56,6 +57,15 @@ export default function ResultsPage() {
   const totalScans = stats?.total_scans ?? scans.length;
   const avgScore = stats?.avg_freshness_index ?? 0;
   const freshRate = stats?.fresh_rate_percent ?? 0;
+
+  const copyScanId = async (scanId: string) => {
+  try {
+    await navigator.clipboard.writeText(scanId);
+    toast.success('Scan ID copied to clipboard!');
+  } catch (error) {
+    toast.error('Failed to copy Scan ID.');
+  }
+};
 
   return (
     <div className="min-h-[calc(100vh-4rem)] px-6 md:px-16 lg:px-24 py-8 md:py-12">
@@ -144,9 +154,17 @@ export default function ResultsPage() {
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1">
-                          <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant">
-                            {h.scan_display_id}
-                          </span>
+                          <div className="flex items-center gap-1">
+                       <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant">
+                         {h.scan_display_id}
+                       </span>
+
+                       <Copy
+                            className="h-3.5 w-3.5 cursor-pointer text-on-surface-variant hover:text-neon"
+                            onClick={() => copyScanId(h.scan_display_id)}
+                            title="Copy Scan ID"
+                       />
+</div>
                           <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant">
                             {h.market_name}
                           </span>
