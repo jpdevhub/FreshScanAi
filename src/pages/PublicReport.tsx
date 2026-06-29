@@ -28,9 +28,13 @@ export default function PublicReport() {
       .catch(() => setError(true));
   }, [id]);
 
+  const reportUrl = id
+  ? `${window.location.origin}/report/${id}`
+  : window.location.href;
+
   const copyReportUrl = async () => {
   try {
-    await navigator.clipboard.writeText(window.location.href);
+    await navigator.clipboard.writeText(reportUrl);
     toast.success('Public report URL copied!');
   } catch {
     toast.error('Failed to copy public report URL.');
@@ -97,14 +101,18 @@ export default function PublicReport() {
             
             <div className="flex items-center justify-between bg-surface-low border border-outline-variant/30 p-3">
             <span className="font-mono text-xs break-all">
-              {window.location.href}
+              {reportUrl}
               </span>
 
-              <Copy
-              className="h-4 w-4 cursor-pointer hover:text-neon shrink-0 ml-3"
+              <button
+              type="button"
               onClick={copyReportUrl}
+              aria-label="Copy public report URL"
               title="Copy Public Report URL"
-            />
+              className="shrink-0 ml-3 text-on-surface-variant hover:text-neon"
+             >
+              <Copy className="h-4 w-4" aria-hidden="true" />
+              </button>
             </div>
             </div>
 
