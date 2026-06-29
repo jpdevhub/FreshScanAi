@@ -159,12 +159,16 @@ export default function ResultsPage() {
                          {h.scan_display_id}
                        </span>
 
-                       <Copy
-                            className="h-3.5 w-3.5 cursor-pointer text-on-surface-variant hover:text-neon"
-                            onClick={() => copyScanId(h.scan_display_id)}
-                            title="Copy Scan ID"
-                       />
-</div>
+                       <button
+                         type="button"
+                         onClick={() => copyScanId(h.scan_display_id)}
+                        aria-label="Copy Scan ID"
+                        title="Copy Scan ID"
+                        className="shrink-0 ml-2 text-on-surface-variant hover:text-neon"
+                       >
+                        <Copy className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                        </div>
                           <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant">
                             {h.market_name}
                           </span>
