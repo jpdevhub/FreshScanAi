@@ -62,7 +62,7 @@ export default function ResultsPage() {
   try {
     await navigator.clipboard.writeText(scanId);
     toast.success('Scan ID copied to clipboard!');
-  } catch (error) {
+  } catch {
     toast.error('Failed to copy Scan ID.');
   }
 };

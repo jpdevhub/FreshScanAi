@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import StatusTerminal from '../components/StatusTerminal';
+import { Copy } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface ScanData {
   id: string;
@@ -14,7 +16,6 @@ interface ScanData {
 export default function PublicReport() {
   const { id } = useParams();
   const [scan, setScan] = useState<ScanData | null>(null);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -27,11 +28,14 @@ export default function PublicReport() {
       .catch(() => setError(true));
   }, [id]);
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const copyReportUrl = async () => {
+  try {
+    await navigator.clipboard.writeText(window.location.href);
+    toast.success('Public report URL copied!');
+  } catch {
+    toast.error('Failed to copy public report URL.');
+  }
+};
 
   const handlePrint = () => window.print();
 
@@ -86,17 +90,29 @@ export default function PublicReport() {
           </pre>
         </div>
 
+        <div className="mb-8 print:hidden">
+          <p className="font-mono text-[0.65rem] tracking-widest text-on-surface-variant mb-2 uppercase">
+            PUBLIC REPORT URL
+            </p>
+            
+            <div className="flex items-center justify-between bg-surface-low border border-outline-variant/30 p-3">
+            <span className="font-mono text-xs break-all">
+              {window.location.href}
+              </span>
+
+              <Copy
+              className="h-4 w-4 cursor-pointer hover:text-neon shrink-0 ml-3"
+              onClick={copyReportUrl}
+              title="Copy Public Report URL"
+            />
+            </div>
+            </div>
+
         {/* Controls */}
-        <div className="flex gap-4 print:hidden">
-          <button
-            onClick={handleShare}
-            className="flex-1 py-3 bg-secondary text-on-primary font-display font-bold text-sm tracking-wider uppercase transition-colors hover:brightness-110 border-none cursor-pointer"
-          >
-            {copied ? 'COPIED TO CLIPBOARD' : 'COPY SHARE LINK'}
-          </button>
+        <div className="print:hidden">
           <button 
             onClick={handlePrint} 
-            className="flex-1 py-3 bg-surface-high text-on-surface font-display font-bold text-sm tracking-wider uppercase transition-colors hover:text-neon border border-outline-variant/30 cursor-pointer"
+            className="w-full py-3 bg-surface-high text-on-surface font-display font-bold text-sm tracking-wider uppercase transition-colors hover:text-neon border border-outline-variant/30 cursor-pointer"
           >
             PRINT / SAVE PDF
           </button>
