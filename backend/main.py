@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional
+from auth import router as auth_router
 from auth import get_current_user, get_google_oauth_url, exchange_code_for_session
 from turnstile import TURNSTILE_SECRET_KEY, verify_turnstile_token
 from slowapi.errors import RateLimitExceeded
@@ -102,7 +103,8 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="FreshScan AI", version="1.1.0", lifespan=lifespan)
+app = FastAPI(title="FreshScan AI", version="1.1.0", lifespan=lifespan) 
+app.include_router(auth_router)
 
 # Parse ADDITIONAL_CORS_ORIGINS from environment
 ADDITIONAL_CORS_ORIGINS = os.environ.get("ADDITIONAL_CORS_ORIGINS", "").split(",")

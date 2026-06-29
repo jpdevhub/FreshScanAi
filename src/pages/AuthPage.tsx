@@ -33,6 +33,7 @@ export default function AuthPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
     const error = params.get('error');
 
     if (error) {
@@ -42,6 +43,9 @@ export default function AuthPage() {
 
     if (accessToken) {
       setToken(accessToken);
+      if (refreshToken) {
+        localStorage.setItem('fs_refresh_token', refreshToken);
+      }
       window.history.replaceState({}, '', '/auth');
       navigate('/mode', { replace: true });
       return;

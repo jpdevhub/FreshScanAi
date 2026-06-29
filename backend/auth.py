@@ -1,4 +1,54 @@
+# ──────────────────────────────────────────────
+# 
+# ──────────────────────────────────────────────
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from supabase import create_client
 import os
+
+# Create a router for auth endpoints
+router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+# Request body model — expects a refresh_token string
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+@router.post("/refresh")
+async def refresh_session(body: RefreshRequest):
+    """
+    Exchange a Supabase refresh_token for a new access_token + refresh_token.
+    Called automatically by the frontend when a 401 Unauthorized error occurs.
+    """
+    try:
+        # Create a Supabase client using environment variables
+        supabase_url = os.environ.get("SUPABASE_URL")
+        supabase_key = os.environ.get("SUPABASE_KEY")
+
+        if not supabase_url or not supabase_key:
+            raise HTTPException(status_code=500, detail="Supabase environment variables not configured.")
+
+        supabase = create_client(supabase_url, supabase_key)
+
+        # Ask Supabase to give us a fresh session using the refresh token
+        response = supabase.auth.refresh_session(body.refresh_token)
+
+        # If Supabase didn't return a session, something is wrong
+        if not response or not response.session:
+            raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+        # Return the new tokens to the frontend
+        return {
+            "access_token": response.session.access_token,
+            "refresh_token": response.session.refresh_token,
+        }
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Any other error means the refresh failed
+        raise HTTPException(status_code=401, detail=f"Token refresh failed: {str(e)}")
 import uuid
 from fastapi import HTTPException, Header
 from supabase import create_client, Client
