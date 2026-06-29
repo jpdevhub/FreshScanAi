@@ -5,51 +5,53 @@ import StatusTerminal from '../components/StatusTerminal';
 import GlassCard from '../components/GlassCard';
 import { api } from '../lib/api';
 import type { GradcamResponse } from '../lib/api';
+import { useTranslation } from 'react-i18next';
 
 // ── Mode Cards data ────────────────────────────────────────────────────────────
 
 const modes = [
   {
     icon: ScanLine,
-    title: 'Individual Scan',
-    code: 'MODE_SINGLE',
-    desc: 'Point-and-analyze a single specimen. Optimal for retail consumers verifying individual purchase quality.',
-    stat: 'AVG_TIME: 2.3s',
+    titleKey: 'modeSelect.individual.title',
+    codeKey: 'modeSelect.individual.code',
+    descKey: 'modeSelect.individual.desc',
+    statKey: 'modeSelect.individual.stat',
     to: '/scanner',
   },
   {
     icon: Layers,
-    title: 'Batch Assessment',
-    code: 'MODE_BATCH',
-    desc: 'Multi-specimen sweep across a display. Designed for wholesale buyers processing 20+ units per session.',
-    stat: 'THROUGHPUT: 12/min',
+    titleKey: 'modeSelect.batch.title',
+    codeKey: 'modeSelect.batch.code',
+    descKey: 'modeSelect.batch.desc',
+    statKey: 'modeSelect.batch.stat',
     to: '/scanner',
   },
   {
     icon: MapPin,
-    title: 'Market Survey',
-    code: 'MODE_SURVEY',
-    desc: 'Contribute to the crowdsourced Trust Map. Survey an entire market stall and submit anonymized freshness data.',
-    stat: 'DATA_POINTS: 47.2K',
+    titleKey: 'modeSelect.survey.title',
+    codeKey: 'modeSelect.survey.code',
+    descKey: 'modeSelect.survey.desc',
+    statKey: 'modeSelect.survey.stat',
     to: '/map',
   },
 ];
 
 // ── Grad-CAM class colours ────────────────────────────────────────────────────
 
-const CLASS_META: Record<number, { label: string; colour: string; bg: string }> = {
-  0: { label: 'FRESH', colour: '#39ff14', bg: 'rgba(57,255,20,0.12)' },
-  1: { label: 'MODERATE', colour: '#f5a623', bg: 'rgba(245,166,35,0.12)' },
-  2: { label: 'SPOILED', colour: '#ff4040', bg: 'rgba(255,64,64,0.12)' },
+const CLASS_META: Record<number, { labelKey: string; colour: string; bg: string }> = {
+  0: { labelKey: 'modeSelect.classificationFresh', colour: '#39ff14', bg: 'rgba(57,255,20,0.12)' },
+  1: { labelKey: 'modeSelect.classificationModerate', colour: '#f5a623', bg: 'rgba(245,166,35,0.12)' },
+  2: { labelKey: 'modeSelect.classificationSpoiled', colour: '#ff4040', bg: 'rgba(255,64,64,0.12)' },
 };
 
 // ── Grad-CAM Viewer component ─────────────────────────────────────────────────
 
 function GradCamViewer() {
+  const { t } = useTranslation();
   const [originalSrc, setOriginalSrc] = useState<string | null>(null);
   const [result, setResult] = useState<GradcamResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
   const [notAFish, setNotAFish] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,7 +59,7 @@ function GradCamViewer() {
   // Process a File object — show preview & call API
   const processFile = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      setError('Please upload a valid image file (JPEG / PNG / WebP).');
+      setErrorKey('gradcam.invalidFileError');
       return;
     }
 
@@ -67,7 +69,7 @@ function GradCamViewer() {
     reader.readAsDataURL(file);
 
     setLoading(true);
-    setError(null);
+    setErrorKey(null);
     setResult(null);
     setNotAFish(false);
 
@@ -76,12 +78,32 @@ function GradCamViewer() {
       const res = await api.getGradcam(blob);
       setResult(res);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Grad-CAM generation failed.';
-      if (msg.startsWith('NOT_A_FISH')) {
-        setNotAFish(true);
-        // keep originalSrc so user can see what they uploaded
+      // Centralized and robust error handling.
+      // We determine the correct translation key first, then translate and set the error.
+      let errorKey = 'error.unknown';
+      let shouldSetError = true;
+
+      if (err instanceof Error) {
+        const msg = err.message;
+
+        if (msg.startsWith('error.')) {
+          // Ideal path: The API layer provided a specific translation key.
+          errorKey = msg;
+        } else if (msg.toLowerCase().includes('failed to fetch')) {
+          // Fallback for raw network errors that weren't caught by the API layer.
+          errorKey = 'error.network.connection';
+        } else if (msg.startsWith('NOT_A_FISH')) {
+          setNotAFish(true);
+          shouldSetError = false; // Don't show a generic error for this specific case.
+        }
       } else {
-        setError(msg);
+        // This handles non-Error exceptions.
+        errorKey = 'gradcam.generationFailedError';
+        console.error('Grad-CAM processing non-error thrown:', err);
+      }
+
+      if (shouldSetError) {
+        setErrorKey(errorKey);
       }
     } finally {
       setLoading(false);
@@ -105,7 +127,7 @@ function GradCamViewer() {
   const reset = () => {
     setOriginalSrc(null);
     setResult(null);
-    setError(null);
+    setErrorKey(null);
     setNotAFish(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -122,16 +144,14 @@ function GradCamViewer() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1">
             <h3 className="text-lg font-bold font-[family-name:var(--font-display)]">
-              Grad-CAM Viewer
+              {t('modeSelect.gradcamViewerTitle')}
             </h3>
             <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-neon-text bg-surface-highest px-2 py-0.5">
-              XAI_MODULE
+              {t('modeSelect.xaiModule')}
             </span>
           </div>
           <p className="text-on-surface-variant text-sm leading-relaxed">
-            Upload a fish image to visualise which regions the Stream A neural network
-            focuses on for freshness classification. Colours range from blue (low attention)
-            to red (high attention).
+            {t('modeSelect.gradcamDescription')}
           </p>
         </div>
       </div>
@@ -154,10 +174,10 @@ function GradCamViewer() {
         >
           <Upload size={32} className={`transition-colors duration-200 ${dragging ? 'text-neon' : 'text-on-surface-variant'}`} />
           <p className="text-sm text-on-surface-variant text-center">
-            <span className="text-neon font-semibold">Click to upload</span> or drag &amp; drop
+            <span className="text-neon font-semibold">{t('modeSelect.clickToUpload')}</span> {t('modeSelect.orDragDrop')}
           </p>
           <p className="text-xs text-on-surface-variant/60 font-[family-name:var(--font-mono)]">
-            JPEG · PNG · WebP — any resolution
+            {t('modeSelect.acceptedFormats')}
           </p>
           <input
             ref={fileInputRef}
@@ -174,7 +194,7 @@ function GradCamViewer() {
       {loading && (
         <div className="flex flex-col items-center justify-center gap-3 py-10">
           <Loader2 size={32} className="text-neon animate-spin" />
-          <StatusTerminal messages={['RUNNING_FORWARD_PASS', 'COMPUTING_GRADIENTS', 'RENDERING_HEATMAP']} />
+          <StatusTerminal messages={[t('gradcam.runningForwardPass'), t('gradcam.computingGradients'), t('gradcam.renderingHeatmap')]} />
         </div>
       )}
 
@@ -185,8 +205,8 @@ function GradCamViewer() {
           {originalSrc && (
             <div className="overflow-hidden" style={{ maxHeight: '180px' }}>
               <img
-                src={originalSrc}
-                alt="Rejected upload"
+                src={originalSrc!}
+                alt={t('gradcam.rejectedUploadAlt', 'Rejected upload')}
                 className="w-full object-cover opacity-40 grayscale"
                 style={{ maxHeight: '180px' }}
               />
@@ -197,17 +217,16 @@ function GradCamViewer() {
             <span className="text-2xl leading-none select-none" aria-hidden></span>
             <div className="flex-1 min-w-0">
               <p className="text-amber-400 font-bold text-sm font-[family-name:var(--font-display)] mb-1">
-                NOT_A_FISH_DETECTED
+                {t('gradcam.notAFishDetected')}
               </p>
               <p className="text-on-surface-variant text-sm">
-                The uploaded image does not appear to contain a fish.
-                Please upload a clear photo of a fish body, eye, or gill.
+                {t('gradcam.notAFishText')}
               </p>
             </div>
             <button
               onClick={reset}
               className="text-on-surface-variant hover:text-neon transition-colors mt-0.5"
-              title="Try again"
+              title={t('common.tryAgain', 'Try Again')}
             >
               <X size={16} />
             </button>
@@ -217,7 +236,7 @@ function GradCamViewer() {
             onClick={() => fileInputRef.current?.click()}
             className="text-xs text-neon/70 hover:text-neon transition-colors font-[family-name:var(--font-mono)] tracking-wide flex items-center gap-1.5"
           >
-            <Upload size={11} /> UPLOAD_DIFFERENT_IMAGE
+            <Upload size={11} /> {t('gradcam.uploadDifferentImage')}
           </button>
           <input
             ref={fileInputRef}
@@ -230,13 +249,17 @@ function GradCamViewer() {
       )}
 
       {/* Generic error state */}
-      {error && !loading && (
+      {errorKey && !loading && (
         <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30 mt-2">
           <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <p className="text-red-400 text-sm font-[family-name:var(--font-mono)]">{error}</p>
+            <p className="text-red-400 text-sm font-[family-name:var(--font-mono)]">{t(errorKey)}</p>
           </div>
-          <button onClick={reset} className="text-on-surface-variant hover:text-neon transition-colors">
+          <button
+            onClick={reset}
+            className="text-on-surface-variant hover:text-neon transition-colors"
+            title={t('common.reset', 'Reset')}
+          >
             <X size={16} />
           </button>
         </div>
@@ -255,7 +278,7 @@ function GradCamViewer() {
                 className="font-[family-name:var(--font-mono)] text-xs font-bold px-2 py-0.5"
                 style={{ color: classMeta!.colour, background: classMeta!.colour + '20' }}
               >
-                {classMeta!.label}
+                {t(classMeta!.labelKey)}
               </span>
               <span className="text-sm text-on-surface-variant font-[family-name:var(--font-mono)]">
                 {result.predicted_class}
@@ -264,13 +287,13 @@ function GradCamViewer() {
             <div className="flex items-center gap-2">
               {result.mode === 'demo' && (
                 <span className="text-[0.5625rem] font-[family-name:var(--font-mono)] tracking-widest text-on-surface-variant bg-surface-highest px-2 py-0.5">
-                  DEMO_MODE
+                  {t('modeSelect.demoMode')}
                 </span>
               )}
               <button
                 onClick={reset}
                 className="text-on-surface-variant hover:text-neon transition-colors p-1"
-                title="Reset"
+                title={t('common.reset', 'Reset')}
               >
                 <X size={14} />
               </button>
@@ -281,13 +304,13 @@ function GradCamViewer() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Original */}
             <div className="space-y-1.5">
-              <p className="text-[0.6rem] tracking-[0.15em] text-on-surface-variant font-[family-name:var(--font-mono)]">
-                ORIGINAL_INPUT
-              </p>
+                <p className="text-[0.6rem] tracking-[0.15em] text-on-surface-variant font-[family-name:var(--font-mono)]">
+                  {t('gradcam.originalInput')}
+                </p>
               <div className="bg-surface-highest overflow-hidden aspect-square">
                 <img
                   src={originalSrc!}
-                  alt="Original uploaded image"
+                  alt={t('gradcam.originalImageAlt', 'Original uploaded image')}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -296,12 +319,12 @@ function GradCamViewer() {
             {/* Grad-CAM overlay */}
             <div className="space-y-1.5">
               <p className="text-[0.6rem] tracking-[0.15em] text-neon font-[family-name:var(--font-mono)]">
-                ACTIVATION_MAP {result.mode === 'real' ? '· STREAM_A' : '· SYNTHETIC'}
+                {t('gradcam.activationMap')} {result.mode === 'real' ? `· ${t('gradcam.streamA')}` : `· ${t('gradcam.synthetic')}`}
               </p>
               <div className="bg-surface-highest overflow-hidden aspect-square relative">
                 <img
                   src={result.gradcam_image}
-                  alt="Grad-CAM heatmap overlay"
+                  alt={t('gradcam.heatmapAlt', 'Grad-CAM heatmap overlay')}
                   className="w-full h-full object-cover"
                 />
                 {/* Legend overlay */}
@@ -310,7 +333,7 @@ function GradCamViewer() {
                     <div key={i} className="w-6 h-2" style={{ background: c }} />
                   ))}
                   <span className="text-[0.5rem] text-white/60 font-[family-name:var(--font-mono)] ml-1">
-                    LOW → HIGH
+                    {t('gradcam.lowToHigh')}
                   </span>
                 </div>
               </div>
@@ -322,7 +345,7 @@ function GradCamViewer() {
             onClick={() => fileInputRef.current?.click()}
             className="text-xs text-neon/70 hover:text-neon transition-colors font-[family-name:var(--font-mono)] tracking-wide flex items-center gap-1.5"
           >
-            <Upload size={11} /> UPLOAD_NEW_IMAGE
+            <Upload size={11} /> {t('gradcam.uploadNewImage')}
           </button>
           <input
             ref={fileInputRef}
@@ -340,22 +363,23 @@ function GradCamViewer() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ModeSelectPage() {
-  return (
+  const { t } = useTranslation();
+
+      return (
     <div className="min-h-[calc(100vh-4rem)] px-6 md:px-16 lg:px-24 py-12 md:py-20">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <StatusTerminal
-          messages={['OPERATION_MODE', 'SELECT_PROTOCOL', 'AWAITING_INPUT']}
+          messages={[t('modeSelect.operationMode'), t('modeSelect.selectProtocol'), t('modeSelect.awaitingInput')]}
           className="mb-6"
         />
         <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-4 font-[family-name:var(--font-display)]">
-          Select Operation
+          {t('modeSelect.selectOperation')}
           <br />
-          <span className="text-neon">Mode</span>
+          <span className="text-neon">{t('modeSelect.mode')}</span>
         </h1>
         <p className="text-on-surface-variant mb-12 max-w-lg text-sm">
-          Choose your scanning protocol. Each mode is optimized for different
-          operational contexts and specimen volumes.
+          {t('modeSelect.description')}
         </p>
 
         {/* Mode Cards */}
@@ -376,16 +400,16 @@ export default function ModeSelectPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-bold font-[family-name:var(--font-display)]">
-                        {mode.title}
+                        {t(mode.titleKey)}
                       </h3>
                       <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-neon-text bg-surface-highest px-2 py-0.5">
-                        {mode.code}
+                        {t(mode.codeKey)}
                       </span>
                     </div>
                     <p className="text-on-surface-variant text-sm leading-relaxed mb-3">
-                      {mode.desc}
+                      {t(mode.descKey)}
                     </p>
-                    <StatusTerminal messages={[mode.stat]} />
+                    <StatusTerminal messages={[t(mode.statKey)]} />
                   </div>
 
                   {/* Arrow */}
@@ -403,15 +427,15 @@ export default function ModeSelectPage() {
         {/* ── Grad-CAM Viewer ───────────────────────────────────────────────── */}
         <div className="mb-6">
           <StatusTerminal
-            messages={['XAI_MODULE', 'GRAD_CAM_VISUALISER', 'STREAM_A_MOBILENETV2']}
+            messages={[t('modeSelect.xaiModule'), t('modeSelect.gradcamTitle'), t('gradcam.streamA')]}
             className="mb-4"
           />
           <h2 className="text-xl font-bold tracking-tight mb-2 font-[family-name:var(--font-display)]">
-            Explainability <span className="text-neon">Toolkit</span>
+            {t('modeSelect.explainability', 'Explainability')} <span className="text-neon">{t('modeSelect.toolkit', 'Toolkit')}</span>
           </h2>
           <p className="text-on-surface-variant text-sm mb-6 max-w-lg">
-            Understand what the model sees. Upload any fish photo to generate a
-            Gradient-weighted Class Activation Map (Grad-CAM) heatmap.
+            {t('modeSelect.gradcamSectionDescription',
+              'Understand what the model sees. Upload any fish photo to generate a Gradient-weighted Class Activation Map (Grad-CAM) heatmap.')}
           </p>
           <GradCamViewer />
         </div>
@@ -419,7 +443,7 @@ export default function ModeSelectPage() {
         {/* Footer Info */}
         <div className="mt-12 text-center">
           <StatusTerminal
-            messages={['READY', 'ALL_MODULES_LOADED', 'GPU_ACCEL: ON']}
+            messages={[t('scanner.systemReady'), t('modeSelect.allModulesLoaded'), t('modeSelect.gpuAccelOn')]}
             className="justify-center"
           />
         </div>

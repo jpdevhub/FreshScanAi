@@ -19,6 +19,7 @@
     "@tailwindcss/vite": "^4.2.2",
     "framer-motion": "^12.38.0",
     "i18next": "^26.3.0",
+    "i18next-browser-languagedetector": "^8.2.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.16.0",
     "onnxruntime-web": "^1.26.0",

@@ -2,56 +2,102 @@
 
 /* =========================================================
    FRESHSCAN AI — NEON NEURAL DESIGN SYSTEM
-   Creative North Star: "The Kinetic Monolith"
-   Brutalist. Zero-radius. High-contrast neon.
    ========================================================= */
 
-/* ── THEME TOKENS ── */
+/* ── INTERMEDIATE RUNTIME VARIABLES (--t-* prefix avoids collision with @theme) ── */
+:root {
+  /* Dark mode defaults */
+  --t-bg:                 #131313;
+  --t-on-surface:         #e2e2e2;
+  --t-heading:            #ffffff;
+
+  --t-surface:            #131313;
+  --t-surface-lowest:     #0e0e0e;
+  --t-surface-low:        #1b1b1b;
+  --t-surface-mid:        #1f1f1f;
+  --t-surface-high:       #2a2a2a;
+  --t-surface-highest:    #353535;
+  --t-surface-bright:     #393939;
+  --t-bg-void:            #000000;
+
+  --t-on-surface-variant: #c4c9ac;
+  --t-outline:            #8e9379;
+  --t-outline-variant:    #444933;
+  --t-tertiary:           #ffffff;
+
+  --t-neon-text:          #d0ef77;
+  --t-neon-dark:          #556d00;
+
+  /* Glass / border */
+  --glass-bg:          rgba(31, 31, 31, 0.7);
+  --ghost-border-color:rgba(68, 73, 51, 0.15);
+}
+
+/* ── LIGHT MODE — override intermediates ── */
+:root.light {
+  --t-bg:                 #ffffff;
+  --t-on-surface:         #121212;
+  --t-heading:            #121212;
+
+  --t-surface:            #f7f7f7;
+  --t-surface-lowest:     #ffffff;
+  --t-surface-low:        #f2f2f2;
+  --t-surface-mid:        #e8e8e8;
+  --t-surface-high:       #dedede;
+  --t-surface-highest:    #d4d4d4;
+  --t-surface-bright:     #c2c2c2;
+  --t-bg-void:            #e8e8e8;
+
+  --t-on-surface-variant: #3d3d3d;
+  --t-outline:            #6b6b6b;
+  --t-outline-variant:    #c9c9c9;
+  --t-tertiary:           #121212;
+
+  --t-neon-text:          #3a5200;
+  --t-neon-dark:          #3a5200;
+
+  --glass-bg:          rgba(242, 242, 242, 0.85);
+  --ghost-border-color:rgba(180, 180, 180, 0.4);
+}
+
+/* ── TAILWIND DESIGN TOKENS — reference the intermediate vars (no circular refs) ── */
 @theme {
-  /* Mapping tokens to CSS variables */
-  --color-bg: var(--bg);
-  --color-on-surface: var(--on-surface);
-  --color-heading: var(--heading-color);
+  --color-bg:             var(--t-bg);
+  --color-on-surface:     var(--t-on-surface);
+  --color-heading:        var(--t-heading);
 
-  --color-bg-void: #000000;
-  --color-surface: #131313;
-  --color-surface-lowest: #0e0e0e;
-  --color-surface-low: #1b1b1b;
-  --color-surface-mid: #1f1f1f;
-  --color-surface-high: #2a2a2a;
-  --color-surface-highest: #353535;
-  --color-surface-bright: #393939;
+  --color-surface:        var(--t-surface);
+  --color-surface-lowest: var(--t-surface-lowest);
+  --color-surface-low:    var(--t-surface-low);
+  --color-surface-mid:    var(--t-surface-mid);
+  --color-surface-high:   var(--t-surface-high);
+  --color-surface-highest:var(--t-surface-highest);
+  --color-surface-bright: var(--t-surface-bright);
+  --color-bg-void:        var(--t-bg-void);
 
-  --color-neon: #c3f400;
-  --color-neon-dim: #abd600;
-  --color-neon-text: #d0ef77;
-  --color-neon-dark: #556d00;
+  --color-on-surface-variant: var(--t-on-surface-variant);
+  --color-outline:            var(--t-outline);
+  --color-outline-variant:    var(--t-outline-variant);
+  --color-tertiary:           var(--t-tertiary);
 
-  --color-secondary: #b5d25e;
+  /* Static neon — same both modes */
+  --color-neon:                #c3f400;
+  --color-neon-dim:            #abd600;
+  --color-neon-text:           var(--t-neon-text);
+  --color-neon-dark:           var(--t-neon-dark);
+
+  --color-secondary:           #b5d25e;
   --color-secondary-container: #5d7602;
+  --color-on-primary:          #283500;
 
-  --color-on-surface-variant: #c4c9ac;
-  --color-on-primary: #283500;
-
-  --color-outline: #8e9379;
-  --color-outline-variant: #444933;
-
-  --color-error: #ffb4ab;
-  --color-error-container: #93000a;
-
-  --color-tertiary: #ffffff;
+  --color-error:               #ffb4ab;
+  --color-error-container:     #93000a;
 
   --font-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-body: 'Inter', system-ui, sans-serif;
-  --font-mono: 'Space Mono', 'Space Grotesk', ui-monospace, monospace;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'Space Mono', 'Space Grotesk', ui-monospace, monospace;
 }
 
-/* ── DYNAMIC THEME VARIABLES ── */
-:root {
-  --bg: #131313;
-  --on-surface: #e2e2e2;
-  --heading-color: #ffffff;
-}
 
 /* ── GLOBAL RESET: ZERO RADIUS ── */
 *,
@@ -151,14 +197,14 @@ h6 {
 
 /* ── GLASS PANEL ── */
 .glass-panel {
-  background: rgba(31, 31, 31, 0.7);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
 /* ── GHOST BORDER ── */
 .ghost-border {
-  border: 1px solid rgba(68, 73, 51, 0.15);
+  border: 1px solid var(--ghost-border-color);
 }
 
 /* ── STATUS TERMINAL ── */
@@ -372,27 +418,7 @@ input::placeholder {
   border: none !important;
 }
 
-:root.light {
-  --bg: #ffffff;
-  --on-surface: #121212;
-  --heading-color: #121212;
-  --color-surface: #f7f7f7;
-  --color-surface-lowest: #ffffff;
-  --color-surface-low: #f2f2f2;
-  --color-surface-mid: #e8e8e8;
-  --color-surface-high: #dedede;
-  --color-surface-highest: #d4d4d4;
-  --color-surface-bright: #c2c2c2;
-  --color-bg-void: #e8e8e8;
-  --color-on-surface-variant: #3d3d3d;
-  --color-outline: #6b6b6b;
-  --color-outline-variant: #c9c9c9;
-  --color-tertiary: #121212;
 
-  /* ← These two are the main contrast fix */
-  --color-neon-text: #3a5200;     /* dark green instead of light yellow */
-  --color-neon-dark: #3a5200;
-}
 
 @media print {
   nav, .print\:hidden { display: none !important; }

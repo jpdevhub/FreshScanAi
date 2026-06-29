@@ -70,6 +70,14 @@ class GeminiProvider(LLMProvider):
 
         try:
             response = httpx.post(url, json=payload, timeout=30.0)
+            if response.status_code == 429:
+                logger.warning(
+                    "Gemini quota exhausted (429). "
+                    "Falling back to MockProvider."
+                )
+                return MockProvider().generate_response(
+                    system_prompt, prompt, history
+                )
             response.raise_for_status()
             data = response.json()
             text = data["candidates"][0]["content"]["parts"][0]["text"]
@@ -216,6 +224,55 @@ class OllamaProvider(LLMProvider):
             raise RuntimeError(f"Ollama provider failed: {e}")
 
 
+class GroqProvider(LLMProvider):
+    """Groq cloud inference — OpenAI-compatible API, free tier available."""
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.model = os.environ.get(
+            "GROQ_MODEL", "llama-3.3-70b-versatile"
+        )
+
+    def generate_response(
+        self, system_prompt: str, prompt: str,
+        history: List[Dict[str, str]] = None,
+    ) -> str:
+        import httpx
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        messages = [{"role": "system", "content": system_prompt}]
+        if history:
+            for turn in history:
+                messages.append({
+                    "role": turn["role"],
+                    "content": turn["content"],
+                })
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0.2,
+            "max_tokens": 1024,
+        }
+
+        try:
+            response = httpx.post(
+                url, json=payload, headers=headers, timeout=30.0,
+            )
+            response.raise_for_status()
+            data = response.json()
+            text = data["choices"][0]["message"]["content"]
+            return text
+        except Exception as e:
+            logger.error(f"Groq API error: {e}")
+            raise RuntimeError(f"Groq provider failed: {e}")
+
+
 class MockProvider(LLMProvider):
     """Fallback provider when no API keys are configured."""
 
@@ -327,6 +384,16 @@ def get_llm_provider() -> LLMProvider:
             "OLLAMA_BASE_URL", "http://localhost:11434"
         )
         return OllamaProvider(base_url)
+
+    elif provider_name == "groq":
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            logger.warning(
+                "GROQ_API_KEY is not set. "
+                "Falling back to MockProvider."
+            )
+            return MockProvider()
+        return GroqProvider(api_key)
 
     else:
         logger.warning(

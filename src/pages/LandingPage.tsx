@@ -2,74 +2,62 @@ import { Link } from 'react-router-dom';
 import { isAuthenticated } from '../lib/api';
 import { Zap, Eye, MapPin, ScanLine, Target, Award, ChevronDown } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import BackToTopButton from '../components/BackToTopButton';
 
-const features = [
-  {
-    icon: Zap,
-    title: 'Dual-Stream Context',
-    desc: 'Simultaneous processing of specular reflection and biological texture for high-humidity environments.',
-  },
-  {
-    icon: Eye,
-    title: 'Explainable AI',
-    desc: "Don't just trust a grade. See highlighted markers on the gills, eyes, and scales in real-time.",
-  },
-  {
-    icon: MapPin,
-    title: 'Crowdsourced Map',
-    desc: 'Live freshness heatmaps across local markets powered by anonymized user metadata.',
-  },
-];
-
-const steps = [
-  {
-    icon: ScanLine,
-    step: '01',
-    title: 'Scan Body',
-    desc: 'Position camera 15cm from specimen. Use ambient light or built-in strobe.',
-  },
-  {
-    icon: Target,
-    step: '02',
-    title: 'Target Biomarkers',
-    desc: 'AI identifies gill saturation, corneal clarity, and epidermal tension.',
-  },
-  {
-    icon: Award,
-    step: '03',
-    title: 'Get Grade',
-    desc: 'Instant Freshness Index (0-100) generated with storage recommendations.',
-  },
-];
-
-const faqs = [
-  {
-    q: 'How does the dual-stream AI model work?',
-    a: 'FreshScan uses two specialized neural networks in parallel. Stream A is a fine-tuned MobileNetV2 that analyzes the full fish body for overall freshness classification (C1 Fresh / C2 Moderate / C3 Spoiled). Stream B is a custom BiomarkerCNN that inspects micro-regions — eyes and gills — for localized freshness signals. Their outputs are fused with temperature-scaled confidence scoring to produce the final Freshness Index.',
-  },
-  {
-    q: 'What do the freshness grades mean?',
-    a: 'The Freshness Index (0–100) maps to letter grades: A+ (≥92) and A (≥80) are prime quality, B (≥65) is acceptable, C (≥50) is borderline, and D (below 50) is classified as SPOILED. A score of 65+ is the FRESH threshold. The system also estimates how many hours the fish can safely be stored at 0–4°C.',
-  },
-  {
-    q: 'What is Auto-Scan mode vs. manual scan?',
-    a: 'Auto-Scan accepts a single photo and automatically routes it through a fish-validation gate (CLIP-based) before running both streams. Manual scan mode lets you upload separate Body, Eye, and Gill images for a more granular three-part assessment — useful for advanced users who want to isolate specific biomarkers.',
-  },
-  {
-    q: 'What is the Grad-CAM overlay?',
-    a: 'Grad-CAM (Gradient-weighted Class Activation Mapping) generates a heatmap highlighting exactly which regions of your image drove the freshness prediction. High-activation zones on gills, eyes, or scales are overlaid in a jet colormap so you can see what the model is responding to, not just the score it outputs.',
-  },
-  {
-    q: 'What is the Trust Map?',
-    a: 'The Trust Map is a live, crowdsourced heatmap of local fish vendors and markets. Every anonymized scan tied to a vendor location updates that vendor\'s average freshness score and trust rating in the Supabase database. You can use the map to identify consistently high-quality vendors in your area before you buy.',
-  },
-];
-
 export default function LandingPage() {
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const { t } = useTranslation();
+
+      const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [loggedIn, setLoggedIn] = useState(isAuthenticated());
+
+  const features = [
+    {
+      icon: Zap,
+      title: t('landing.dualStreamTitle'),
+      desc: t('landing.dualStreamDesc'),
+    },
+    {
+      icon: Eye,
+      title: t('landing.explainableAITitle'),
+      desc: t('landing.explainableAIDesc'),
+    },
+    {
+      icon: MapPin,
+      title: t('landing.crowdsourcedTitle'),
+      desc: t('landing.crowdsourcedDesc'),
+    },
+  ];
+
+  const steps = [
+    {
+      icon: ScanLine,
+      step: '01',
+      title: t('landing.scanBodyTitle'),
+      desc: t('landing.scanBodyDesc'),
+    },
+    {
+      icon: Target,
+      step: '02',
+      title: t('landing.targetBiomarkersTitle'),
+      desc: t('landing.targetBiomarkersDesc'),
+    },
+    {
+      icon: Award,
+      step: '03',
+      title: t('landing.getGradeTitle'),
+      desc: t('landing.getGradeDesc'),
+    },
+  ];
+
+  const faqs = [
+    { q: t('landing.faq.q1'), a: t('landing.faq.a1') },
+    { q: t('landing.faq.q2'), a: t('landing.faq.a2') },
+    { q: t('landing.faq.q3'), a: t('landing.faq.a3') },
+    { q: t('landing.faq.q4'), a: t('landing.faq.a4') },
+    { q: t('landing.faq.q5'), a: t('landing.faq.a5') },
+  ];
 
   useEffect(() => {
     const handleAuthChange = () => setLoggedIn(isAuthenticated());
@@ -83,32 +71,31 @@ export default function LandingPage() {
       <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-6 md:px-16 lg:px-24 py-20 overflow-hidden text-center">
         <div className="relative z-10 max-w-5xl mx-auto">
           <h1 className="font-headline text-[3.5rem] md:text-[5rem] lg:text-[7rem] leading-[1.05] font-extrabold tracking-tighter text-white mb-8">
-            Fish Freshness
+            {t('landing.heroLine1')}
             <br />
-            <span className="text-neon italic block mt-2 md:mt-3">*Objectively Graded*</span>
+            <span className="text-neon italic block mt-2 md:mt-3">{t('landing.heroLine2')}</span>
           </h1>
 
           <p className="text-on-surface-variant text-base md:text-lg max-w-xl leading-relaxed mb-10 font-[family-name:var(--font-body)] mx-auto">
-            Academic-grade AI vision engineered for real-time biomarker analysis
-            in high-humidity environments.
+            {t('landing.heroSubtitle')}
           </p>
 
           {/* Stat Pills */}
           <div className="flex flex-wrap justify-center gap-4 mb-12">
             <GlassCard className="px-6 py-4" variant="glass">
               <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-on-surface-variant uppercase block mb-1">
-                Inference Speed
+                {t('landing.inferenceSpeed')}
               </span>
               <span className="font-[family-name:var(--font-display)] text-3xl font-bold text-neon">
-                &lt;50ms
+                {t('landing.speedValue')}
               </span>
             </GlassCard>
             <GlassCard className="px-6 py-4" variant="glass">
               <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-on-surface-variant uppercase block mb-1">
-                Biomarker Accuracy
+                {t('landing.biomarkerAccuracy')}
               </span>
               <span className="font-[family-name:var(--font-display)] text-3xl font-bold text-neon">
-                98.9%
+                {t('landing.accuracyValue')}
               </span>
             </GlassCard>
           </div>
@@ -120,14 +107,14 @@ export default function LandingPage() {
               className="bg-neon text-on-primary px-8 py-4 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider no-underline transition-all duration-200 hover:bg-neon-dim pulse-glow inline-flex items-center gap-3"
             >
               <ScanLine size={18} />
-              BEGIN_ASSESSMENT
+              {t('landing.beginAssessment')}
             </Link>
             {!loggedIn && (
               <Link
                 to="/auth"
                 className="hidden md:inline-flex bg-transparent text-neon px-8 py-4 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider no-underline ghost-border transition-all duration-200 hover:bg-surface-high items-center gap-3"
               >
-                INITIALIZE_SESSION
+                {t('landing.initializeSession')}
               </Link>
             )}
           </div>
@@ -137,15 +124,14 @@ export default function LandingPage() {
       {/* ── FEATURES ── */}
       <section className="bg-surface-low px-6 md:px-16 lg:px-24 py-20 md:py-28">
         <div className="max-w-6xl mx-auto">
-          <span className="status-terminal block mb-4">CORE_MODULES</span>
+          <span className="status-terminal block mb-4">{t('landing.coreModulesTitle')}</span>
           <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">
-            Intelligence designed
+            {t('landing.intelligenceFor')}
             <br />
-            for the <span className="text-neon">wet market</span>
+            {t('landing.forThe')} <span className="text-neon">{t('landing.wetMarket')}</span>
           </h2>
           <p className="text-on-surface-variant mb-16 max-w-lg">
-            Three specialized AI pipelines working in concert to deliver
-            laboratory-grade freshness analysis on consumer hardware.
+            {t('landing.moduleDescription')}
           </p>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -161,7 +147,7 @@ export default function LandingPage() {
                   {f.desc}
                 </p>
                 <span className="status-terminal block mt-6 text-[0.5625rem]">
-                  MODULE_{String(i + 1).padStart(2, '0')}: LOADED
+                  {t('landing.moduleLoaded', { num: String(i + 1).padStart(2, '0') })}
                 </span>
               </GlassCard>
             ))}
@@ -172,11 +158,11 @@ export default function LandingPage() {
       {/* ── HOW IT WORKS ── */}
       <section className="px-6 md:px-16 lg:px-24 py-20 md:py-28">
         <div className="max-w-6xl mx-auto">
-          <span className="status-terminal block mb-4">SCAN_PROTOCOL</span>
+          <span className="status-terminal block mb-4">{t('landing.scanProtocolTitle')}</span>
           <h2 className="text-3xl md:text-5xl font-bold mb-16 tracking-tight">
-            Three steps to
+            {t('landing.stepsTo')}
             <br />
-            <span className="text-neon">certainty</span>
+            <span className="text-neon">{t('landing.certainty')}</span>
           </h2>
 
           <div className="grid md:grid-cols-3 gap-0">
@@ -208,11 +194,12 @@ export default function LandingPage() {
 
           <GlassCard className="mt-8 p-6 md:p-8" variant="glass">
             <p className="text-on-surface-variant text-sm leading-relaxed italic">
-              "FreshScan AI transforms the chaotic wet market into a structured,{' '}
-              <span className="text-neon not-italic font-semibold">
-                transparent ecosystem
-              </span>
-              ."
+              &ldquo;
+              <Trans
+                i18nKey="landing.heroDescription"
+                components={{ 1: <span className="text-neon not-italic font-semibold" /> }}
+              />
+              &rdquo;
             </p>
           </GlassCard>
         </div>
@@ -221,11 +208,11 @@ export default function LandingPage() {
       {/* ── FAQ ── */}
       <section className="bg-surface-low px-6 md:px-16 lg:px-24 py-20 md:py-28">
         <div className="max-w-4xl mx-auto">
-          <span className="status-terminal block mb-4">PROTOCOL_FAQ</span>
+          <span className="status-terminal block mb-4">{t('landing.faqTitle')}</span>
           <h2 className="text-3xl md:text-4xl font-bold mb-12 tracking-tight">
-            Frequently Asked
+            {t('landing.frequentlyAsked')}
             <br />
-            <span className="text-neon">Questions</span>
+            <span className="text-neon">{t('landing.questions')}</span>
           </h2>
 
           <div className="space-y-2">
@@ -261,22 +248,21 @@ export default function LandingPage() {
       {/* ── BOTTOM CTA ── */}
       <section className="px-6 md:px-16 lg:px-24 py-20 md:py-28">
         <div className="max-w-4xl mx-auto text-center">
-          <span className="status-terminal block mb-4">ASSESSMENT_READY</span>
+          <span className="status-terminal block mb-4">{t('landing.assessmentReady')}</span>
           <h2 className="text-4xl md:text-6xl font-bold mb-6 tracking-tighter">
-            First Class
+            {t('landing.firstClass')}
             <br />
-            <span className="text-neon">Assessment</span>
+            <span className="text-neon">{t('landing.assessment')}</span>
           </h2>
           <p className="text-on-surface-variant mb-10 max-w-lg mx-auto">
-            Deploy laboratory-grade freshness analysis directly to your mobile device.
-            No subscription. No cloud dependency.
+            {t('landing.readyDescription')}
           </p>
           <Link
             to="/scanner"
             className="bg-neon text-on-primary px-10 py-5 font-[family-name:var(--font-display)] font-bold text-base tracking-wider no-underline transition-all duration-200 hover:bg-neon-dim pulse-glow inline-flex items-center gap-3"
           >
             <ScanLine size={20} />
-            LAUNCH_SCANNER
+            {t('landing.launchScanner')}
           </Link>
         </div>
       </section>

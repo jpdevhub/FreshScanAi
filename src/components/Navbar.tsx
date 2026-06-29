@@ -55,10 +55,9 @@ export default function Navbar() {
   };
 
   const links = [
-    { to: '/', label: t('home') },
-    { to: '/scanner', label: t('scanner') },
-    { to: '/map', label: t('trustMap') },
-    { to: '/faq', label: 'FAQ' },
+    { to: '/', label: t('navbar.home') },
+    { to: '/scanner', label: t('navbar.scanner') },
+    { to: '/map', label: t('navbar.trustMap') },
   ];
 
   return (
@@ -110,7 +109,7 @@ export default function Navbar() {
             onClick={toggleTheme}
             className="font-[family-name:var(--font-mono)] text-[9px] sm:text-[10px] tracking-widest text-on-surface-variant hover:text-neon transition-colors duration-200 border border-outline-variant/30 px-2 py-1 sm:px-3"
           >
-            THEME
+            {t('navbar.theme')}
           </button>
           {loggedIn ? (
             <div className="relative" ref={dropdownRef}>
@@ -121,12 +120,12 @@ export default function Navbar() {
                 {profile?.avatar_url ? (
                   <img src={profile.avatar_url} referrerPolicy="no-referrer" alt="Profile" className="w-7 h-7 object-cover grayscale-[0.5] contrast-125 border border-neon/30" />
                 ) : (
-                  <div className="w-7 h-7 bg-surface-highest flex items-center justify-center text-neon text-xs font-bold font-[family-name:var(--font-display)]">
-                    {profile?.full_name?.charAt(0) || 'U'}
+                  <div className="w-7 h-7 bg-surface-highest flex items-center justify-center text-neon text-xs font-bold font-[family-name:var(--font-display)]" title={profile?.full_name || t('navbar.devLogin')}>
+                    {(profile?.full_name || t('navbar.devLogin')).charAt(0)}
                   </div>
                 )}
-                <span className="text-xs sm:text-sm font-[family-name:var(--font-mono)] tracking-wider mr-1 uppercase truncate max-w-[60px] sm:max-w-[100px] inline-block align-bottom" title={profile?.full_name?.split(' ')[0] || 'DEV'}>
-                  {profile?.full_name ? profile.full_name.split(' ')[0] : 'DEV'}
+                <span className="text-xs sm:text-sm font-[family-name:var(--font-mono)] tracking-wider mr-1 uppercase truncate max-w-[60px] sm:max-w-[100px] inline-block align-bottom" title={profile?.full_name?.split(' ')[0] || t('navbar.devLogin')}>
+                  {profile?.full_name ? profile.full_name.split(' ')[0] : t('navbar.devLogin')}
                 </span>
               </button>
 
@@ -137,13 +136,13 @@ export default function Navbar() {
                     onClick={() => setIsDropdownOpen(false)}
                     className="px-4 py-3 text-sm font-[family-name:var(--font-display)] font-bold text-on-surface-variant hover:text-neon hover:bg-surface-high no-underline transition-colors duration-200 block"
                   >
-                    RESULTS
+                    {t('navbar.results')}
                   </Link>
                   <button
                     onClick={handleLogout}
                     className="px-4 py-3 text-sm font-[family-name:var(--font-display)] font-bold text-error text-left hover:bg-error/10 transition-colors duration-200 block w-full"
                   >
-                    TERMINATE_SESSION (LOGOUT)
+                    {t('navbar.terminateSession')}
                   </button>
                 </div>
               )}
@@ -153,8 +152,8 @@ export default function Navbar() {
               to="/auth"
               className="flex items-center gap-1 bg-neon text-on-primary px-2 py-1 md:px-5 md:py-2.5 font-[family-name:var(--font-display)] font-bold text-[10px] md:text-sm tracking-wide no-underline transition-all duration-200 hover:bg-neon-dim whitespace-nowrap"
               >
-              <span className="hidden sm:inline">SIGN_IN / SIGN_UP</span>
-              <span className="sm:hidden">LOGIN</span>
+              <span className="hidden sm:inline">{t('navbar.signin')}</span>
+              <span className="sm:hidden">{t('navbar.loginMobile')}</span>
           </Link>
           )}
         </div>
@@ -165,7 +164,7 @@ export default function Navbar() {
         className={`fixed top-20 right-6 bg-surface-mid border border-outline-variant/30 px-6 py-4 glass-panel z-50 flex items-center gap-3 transition-all duration-300 transform ${showToast ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'}`}
       >
         <div className="w-2 h-2 rounded-full bg-neon animate-pulse" />
-        <span className="font-[family-name:var(--font-mono)] text-xs tracking-widest text-on-surface">SESSION_TERMINATED</span>
+        <span className="font-[family-name:var(--font-mono)] text-xs tracking-widest text-on-surface">{t('navbar.sessionTerminated')}</span>
       </div>
     </nav>
   );
