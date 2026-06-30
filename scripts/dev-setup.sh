@@ -39,18 +39,43 @@ else
   ok ".env.local already exists"
 fi
 
-# ── Step 3: Python venv ───────────────────────────────────────────────────────
+
+# ── Step 3: Python venv (cross-platform) ─────────────────────────────────────
+
 log "Creating Python virtual environment..."
+
+# Detect python command
+if command -v python3 &>/dev/null; then
+  PYTHON=python3
+elif command -v python &>/dev/null; then
+  PYTHON=python
+else
+  echo "Python not found. Please install Python 3.10+"
+  exit 1
+fi
+
+# Create venv if missing
 if [ ! -d "$REPO_ROOT/.venv" ]; then
-  python3 -m venv "$REPO_ROOT/.venv"
+  "$PYTHON" -m venv "$REPO_ROOT/.venv"
   ok ".venv created"
 else
   ok ".venv already exists"
 fi
 
+# Detect OS-style venv python
+if [ -f "$REPO_ROOT/.venv/Scripts/python.exe" ]; then
+  VENV_PY="$REPO_ROOT/.venv/Scripts/python.exe"
+  VENV_PIP="$REPO_ROOT/.venv/Scripts/pip.exe"
+else
+  VENV_PY="$REPO_ROOT/.venv/bin/python"
+  VENV_PIP="$REPO_ROOT/.venv/bin/pip"
+fi
+
 log "Installing Python dependencies..."
-"$REPO_ROOT/.venv/bin/pip" install --quiet --upgrade pip
-"$REPO_ROOT/.venv/bin/pip" install --quiet -r "$BACKEND/requirements.txt"
+
+"$VENV_PY" -m pip install --upgrade pip
+"$VENV_PY" -m pip install -r "$BACKEND/requirements.txt"
+
 ok "Python packages installed"
 
 # ── Step 4: Check for Supabase CLI + Docker ────────────────────────────────────
