@@ -97,17 +97,19 @@ export default function LandingPage() {
           <div className="flex flex-wrap justify-center gap-4 mb-12">
             <GlassCard className="px-6 py-4" variant="glass">
               <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-wi text-on-surface-variant">
-  Inference Speed
-</span>
+               Inference Speed
+              </span>
               <span className="font-[family-name:var(--font-display)] text-3xl font-bold text-neon">
                 &lt;50ms
               </span>
             </GlassCard>
             <GlassCard className="px-6 py-4" variant="glass">
-              <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-wi text-on-surface-variant"></span>
-              <span className="font-[family-name:var(--font-display)] text-3xl font-bold text-neon">
-                98.9%
-              </span>
+             <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-white">
+              Biomarker Accuracy
+             </span>
+             <span className="font-[family-name:var(--font-display)] text-3xl font-bold text-neon">
+              98.9%
+             </span>
             </GlassCard>
           </div>
 
