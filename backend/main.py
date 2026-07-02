@@ -2,21 +2,17 @@ import os
 import io
 import uuid
 import random
+import json
 from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional
-from auth import get_current_user, get_google_oauth_url, exchange_code_for_session
-from turnstile import TURNSTILE_SECRET_KEY, verify_turnstile_token
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from rate_limiter import limiter
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from fastapi_cache.decorator import cache
-from chat_router import router as chat_router
-
-
 
 # Load .env file if present (python-dotenv)
 try:
@@ -25,6 +21,16 @@ try:
     load_dotenv(Path(__file__).parent / ".env", override=True)
 except ImportError:
     pass
+
+from auth import get_current_user, get_google_oauth_url, exchange_code_for_session
+from turnstile import TURNSTILE_SECRET_KEY, verify_turnstile_token
+from chat_router import router as chat_router
+from vendors import (
+    get_vendor_achievements,
+    recalculate_vendor_metrics_and_achievements,
+    register_routes,
+    router as vendors_router,
+)
 
 from fastapi import Body, FastAPI, File, UploadFile, Form, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -287,6 +293,16 @@ def _row_to_payload(row: dict) -> dict:
     alerts = row.get("alert_flags") or []
     photos = row.get("photo_urls") or []
 
+    if isinstance(bm, str):
+        try:
+            bm = json.loads(bm)
+        except json.JSONDecodeError:
+            bm = {}
+    if isinstance(alerts, str):
+        alerts = [alerts]
+    if isinstance(photos, str):
+        photos = [photos]
+
     # Use _build_biomarkers as a fallback when biomarker_json was not stored
     if not bm:
         bm = _build_biomarkers(freshness, freshness, freshness)
@@ -318,6 +334,16 @@ def _row_to_payload(row: dict) -> dict:
         "market_name": row.get("market_name"),
         "timestamp": row.get("timestamp"),
     }
+
+
+async def _refresh_vendor_after_scan(vendor_id: Optional[str]) -> None:
+    if not vendor_id:
+        return
+    try:
+        recalculate_vendor_metrics_and_achievements(_db(), vendor_id)
+        await FastAPICache.clear(namespace="markets")
+    except Exception as exc:
+        print(f"Vendor achievement refresh skipped for {vendor_id}: {exc}")
 
 
 async def _upload_image(image_bytes: bytes, user_id: str, scan_id: str) -> Optional[str]:
@@ -481,6 +507,7 @@ async def process_scan(
                     "is_target_domain": is_target_domain,
                 }
             ).execute()
+            await _refresh_vendor_after_scan(vendor_id)
         except Exception as exc:
             print(f"DB write failed (demo): {exc}")
 
@@ -517,6 +544,7 @@ async def process_scan(
                 "is_target_domain": is_target_domain,
             }
         ).execute()
+        await _refresh_vendor_after_scan(vendor_id)
     except Exception as exc:
         print(f"DB write failed: {exc}")
 
@@ -751,7 +779,11 @@ async def get_vendors():
             "trust_score, total_scans, avg_freshness_score, vendor_count"
         )
         resp = _db().table("vendors").select(fields).execute()
-        return {"success": True, "vendors": resp.data}
+        rows = resp.data or []
+        achievements = get_vendor_achievements(_db(), [str(v["id"]) for v in rows])
+        for vendor in rows:
+            vendor["achievements"] = achievements.get(str(vendor["id"]), [])
+        return {"success": True, "vendors": rows}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -762,12 +794,16 @@ async def get_vendor_leaderboard():
         resp = (
             _db()
             .table("vendors")
-            .select("id, name, trust_score, total_scans, avg_freshness_score, lat, lng")
+            .select("id, name, address, trust_score, total_scans, avg_freshness_score, trust_badge, trend, lat, lng")
             .order("trust_score", desc=True)
             .limit(10)
             .execute()
         )
-        return {"success": True, "leaderboard": resp.data}
+        rows = resp.data or []
+        achievements = get_vendor_achievements(_db(), [str(v["id"]) for v in rows])
+        for vendor in rows:
+            vendor["achievements"] = achievements.get(str(vendor["id"]), [])
+        return {"success": True, "leaderboard": rows}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -783,6 +819,8 @@ async def _get_markets_cached() -> dict:
         .select("id, name, avg_freshness_score, trust_score, lat, lng, vendor_count")
         .execute()
     )
+    rows = resp.data or []
+    achievements = get_vendor_achievements(_db(), [str(v["id"]) for v in rows])
     markets = [
         {
             "id": i + 1,
@@ -791,8 +829,9 @@ async def _get_markets_cached() -> dict:
             "lat": float(v.get("lat") or 0),
             "lng": float(v.get("lng") or 0),
             "vendors": int(v.get("vendor_count") or 1),
+            "achievements": achievements.get(str(v["id"]), []),
         }
-        for i, v in enumerate(resp.data or [])
+        for i, v in enumerate(rows)
         if v.get("lat") and v.get("lng")
     ]
     return {"success": True, "markets": markets}
@@ -995,9 +1034,6 @@ async def generate_gradcam(
         "mode": "real",
     }
 
-
-# -- VENDOR TRUST SCORE (Issue #45) -----------------------------------------
-from vendors import router as vendors_router, register_routes
 
 register_routes(vendors_router, _db)
 from markets import router as markets_router

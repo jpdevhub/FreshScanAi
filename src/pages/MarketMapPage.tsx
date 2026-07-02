@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { CalendarCheck, Crown, ShieldCheck, Zap } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import GlassCard from "../components/GlassCard";
@@ -8,7 +9,7 @@ import StatusTerminal from "../components/StatusTerminal";
 import Skeleton from "../components/Skeleton";
 import { useTranslation } from 'react-i18next';
 import { api } from "../lib/api";
-import type { Market } from "../lib/types";
+import type { Market, VendorAchievement } from "../lib/types";
 
 const TILE_DARK =
   "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
@@ -31,6 +32,36 @@ function getScoreColor(score: number) {
 
 function getScoreBg(score: number) {
   return score >= 85 ? "bg-secondary" : score >= 70 ? "bg-neon" : "bg-error";
+}
+
+const ACHIEVEMENT_ICON = {
+  bolt: Zap,
+  calendar: CalendarCheck,
+  crown: Crown,
+  shield: ShieldCheck,
+};
+
+function AchievementBadges({ achievements = [] }: { achievements?: VendorAchievement[] }) {
+  if (!achievements.length) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {achievements.slice(0, 4).map((achievement) => {
+        const Icon =
+          ACHIEVEMENT_ICON[achievement.icon as keyof typeof ACHIEVEMENT_ICON] ?? ShieldCheck;
+        return (
+          <span
+            key={achievement.code}
+            title={`${achievement.title}: ${achievement.description}`}
+            className="inline-flex h-6 w-6 items-center justify-center border border-[#c3f400]/60 bg-[#071014] text-[#c3f400] shadow-[0_0_14px_rgba(195,244,0,0.24)]"
+            aria-label={achievement.title}
+          >
+            <Icon size={13} strokeWidth={2.4} />
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 const createCustomIcon = (score: number) => {
@@ -179,6 +210,7 @@ export default function MarketMapPage() {
                   >
                     {t('marketMap.scorePrefix')}{m.score} | {t('marketMap.vendorsPrefix')}{m.vendors}
                   </div>
+                  <AchievementBadges achievements={m.achievements} />
                 </div>
               </Popup>
             </Marker>
@@ -222,6 +254,7 @@ export default function MarketMapPage() {
                 <span className="font-mono text-[0.5625rem] tracking-widest text-on-surface-variant">
                   {selected.vendors} {t('marketMap.vendorsLabel')}
                 </span>
+                <AchievementBadges achievements={selected.achievements} />
               </div>
               <div className="text-right">
                 <span
