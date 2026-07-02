@@ -63,6 +63,16 @@ export interface Market {
   lat: number;
   lng: number;
   vendors: number;
+  achievements?: VendorAchievement[];
+}
+
+export interface VendorAchievement {
+  code: string;
+  title: string;
+  description: string;
+  icon: string;
+  tier: string;
+  awarded_at?: string;
 }
 
 export interface UserProfile {

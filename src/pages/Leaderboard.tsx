@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from 'react-i18next';
+import { CalendarCheck, Crown, ShieldCheck, Zap } from "lucide-react";
 import Skeleton from "../components/Skeleton";
+import type { VendorAchievement } from "../lib/types";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
@@ -15,6 +17,7 @@ interface Vendor {
   total_scans: number;
   trust_badge: Badge;
   trend: Trend;
+  achievements?: VendorAchievement[];
 }
 
 const BADGE: Record<Badge, { label: string; color: string }> = {
@@ -40,6 +43,36 @@ const TREND: Record<Trend, { icon: string; color: string; label: string }> = {
     label: "leaderboard.stable",
   },
 };
+
+const ACHIEVEMENT_ICON = {
+  bolt: Zap,
+  calendar: CalendarCheck,
+  crown: Crown,
+  shield: ShieldCheck,
+};
+
+function AchievementBadges({ achievements = [] }: { achievements?: VendorAchievement[] }) {
+  if (!achievements.length) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {achievements.slice(0, 4).map((achievement) => {
+        const Icon =
+          ACHIEVEMENT_ICON[achievement.icon as keyof typeof ACHIEVEMENT_ICON] ?? ShieldCheck;
+        return (
+          <span
+            key={achievement.code}
+            title={`${achievement.title}: ${achievement.description}`}
+            className="inline-flex h-6 w-6 items-center justify-center border border-neon/50 bg-surface-lowest text-neon shadow-[0_0_14px_rgba(195,244,0,0.22)]"
+            aria-label={achievement.title}
+          >
+            <Icon size={13} strokeWidth={2.4} />
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function Leaderboard() {
   const { t } = useTranslation();
@@ -146,6 +179,7 @@ export default function Leaderboard() {
                   <p className="text-xs text-on-surface/50 truncate font-mono tracking-widest">
                     {vendor.address}
                   </p>
+                  <AchievementBadges achievements={vendor.achievements} />
                 </div>
 
                 <div className="text-right shrink-0">
