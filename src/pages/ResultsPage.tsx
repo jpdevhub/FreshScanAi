@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ArrowRight , Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import StatusTerminal from '../components/StatusTerminal';
 import { api } from '../lib/api';

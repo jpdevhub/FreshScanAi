@@ -122,13 +122,6 @@ export default function PublicReport() {
 
         {/* Controls */}
         <div className="print:hidden">
-        <div className="flex gap-4 print:hidden">
-          <button
-            onClick={handleShare}
-            className="flex-1 py-3 bg-secondary text-on-primary font-display font-bold text-sm tracking-wider uppercase transition-colors hover:brightness-110 border-none cursor-pointer"
-          >
-            {copied ? t('publicReport.copiedClipboard') : t('publicReport.copyShareLink')}
-          </button>
           <button 
             onClick={handlePrint} 
             className="w-full py-3 bg-surface-high text-on-surface font-display font-bold text-sm tracking-wider uppercase transition-colors hover:text-neon border border-outline-variant/30 cursor-pointer"
