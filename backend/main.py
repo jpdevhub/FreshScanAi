@@ -528,11 +528,58 @@ async def process_scan(
 async def scan_auto(
     request: Request,
     image: UploadFile = File(...),
+    freshness_label: Optional[str] = Form(None),
+    fused_score: Optional[float] = Form(None),
+    source: Optional[str] = Form(None),
+    confidence_score: Optional[float] = Form(None),
+    species_detected: Optional[str] = Form(None),
     current_user=Depends(get_current_user),
 ):
     image_bytes = await image.read()
     scan_id = str(uuid.uuid4())
     display_id = _generate_display_id()
+
+    # If edge_onnx path is used, save directly and bypass server inference
+    if source == "edge_onnx" and fused_score is not None:
+        freshness = int(fused_score * 100)
+        conf = confidence_score or 0.85
+        edge_fusion = {
+            "final_score_percent": freshness,
+            "final_grade": _to_db_grade(freshness_label or "C"),
+            "confidence_score": conf,
+            "uncertain_prediction_flag": conf < 0.70,
+            "regional_breakdown": {
+                "gill_freshness_score": fused_score,
+                "eye_freshness_score": fused_score,
+                "body_freshness_score": fused_score,
+            },
+        }
+        photo_url = await _upload_image(image_bytes, str(current_user.id), scan_id)
+        payload = _build_scan_payload(edge_fusion, scan_id, display_id, photo_url)
+        if species_detected:
+            payload["species"]["common_name"] = species_detected
+
+        try:
+            _db().table("scans").insert(
+                {
+                    "id": scan_id,
+                    "user_id": str(current_user.id),
+                    "final_grade": _to_db_grade(payload["grade"]),
+                    "confidence_score": conf,
+                    "image_type": "BODY",
+                    "freshness_index": payload["freshness_index"],
+                    "scan_display_id": display_id,
+                    "species_detected": species_detected or "Rohu Carp",
+                    "biomarker_json": payload["biomarkers"],
+                    "storage_hours": payload["recommendations"]["consume_within_hours"],
+                    "alert_flags": payload["recommendations"]["alert_flags"],
+                    "photo_urls": [photo_url] if photo_url else [],
+                }
+            ).execute()
+        except Exception as exc:
+            print(f"DB write failed (edge_onnx): {exc}")
+
+        return {"success": True, "scan": payload}
 
     # ── Demo mode: models not loaded (PyTorch not installed) ─────────────────
     if not _models_loaded:
