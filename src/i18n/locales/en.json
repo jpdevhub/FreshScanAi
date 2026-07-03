@@ -155,7 +155,9 @@
     "suggestRescan": "→ Suggest Rescanning specimen",
     "uncertaintyMargin": "Margin of Error:",
     "assessmentReportTab": "ASSESSMENT REPORT",
-    "analyticsTrendsTab": "MARKET TRENDS"
+    "analyticsTrendsTab": "MARKET TRENDS",
+    "unsupportedSpeciesWarningTitle": "Unsupported Species Detected",
+    "unsupportedSpeciesWarningDesc": "This model is calibrated specifically for South Asian Carps (Rohu, Catla, Mrigal). Textural and structural markers for other species might result in inaccurate grading."
   },
   "auth": {
     "authInitiated": "AUTH INITIATED",
