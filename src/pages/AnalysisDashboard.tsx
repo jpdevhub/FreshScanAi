@@ -211,6 +211,22 @@ export default function AnalysisDashboard() {
           </GlassCard>
         )}
 
+        {species.common_name === "Unsupported Species" && (
+          <GlassCard className="p-6 border-l-4 border-warning! mb-6 pulse-glow" variant="tonal">
+            <div className="flex gap-4 items-start">
+              <AlertTriangle className="text-warning shrink-0" size={24} />
+              <div>
+                <h4 className="font-bold text-warning text-sm mb-1">
+                  {t('dashboard.unsupportedSpeciesWarningTitle', 'Unsupported Species Detected')}
+                </h4>
+                <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
+                  {t('dashboard.unsupportedSpeciesWarningDesc', 'This model is calibrated specifically for South Asian Carps (Rohu, Catla, Mrigal). Textural and structural markers for other species might result in inaccurate grading.')}
+                </p>
+              </div>
+            </div>
+          </GlassCard>
+        )}
+
         {/* Score + Species row */}
         <div className="flex flex-col md:flex-row gap-6 mb-8">
           {/* Main score card */}
