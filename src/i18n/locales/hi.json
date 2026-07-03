@@ -194,7 +194,20 @@
     "percentageSymbol": "%",
     "noScansFound": "कोई स्कैन नहीं मिला",
     "runFirstScan": "पहला स्कैन चलाएं",
-    "initiateFirstScan": "पहला स्कैन शुरू करें"
+    "initiateFirstScan": "पहला स्कैन शुरू करें",
+    "enterCompare": "स्कैन तुलना करें",
+    "exitCompare": "तुलना रद्द करें",
+    "selectOneMore": "तुलना करने के लिए 1 और स्कैन चुनें",
+    "readyToCompare": "तुलना के लिए 2 स्कैन चुने गए",
+    "compareNow": "अभी तुलना करें",
+    "compareTitle": "बायोमार्कर ताजगी तुलना",
+    "sideBySide": "नमूना तुलना मोड",
+    "varianceLabel": "भिन्नता और क्षय मीट्रिक",
+    "identicalFreshness": "नमूनों में समान ताजगी सूचकांक हैं।",
+    "specimenA": "नमूना A",
+    "fresher": "अधिक ताजा",
+    "moreDecayed": "अधिक खराब",
+    "thanSpecimenB": "नमूने B की तुलना में"
   },
   "marketMap": {
     "failedLoadMarketData": "लाइव बाजार डेटा लोड करने में विफल।",
