@@ -136,10 +136,11 @@ export default function AnalysisDashboard() {
     );
   }
 
-  const { freshness_index, grade, confidence, classification, species, biomarkers, recommendations } = scan;
+  const { freshness_index, grade, confidence, classification, species, biomarkers, recommendations, fraud } = scan;
   const displayId = scan.scan_display_id;
   const alerts = recommendations.alert_flags;
   const uncertain_flag = scan.uncertain_flag ?? (confidence < 70);
+  const fraudData = fraud || { detected: false, reason: "" };
 
   return (
     <div className="min-h-[calc(100vh-4rem)] px-6 md:px-16 lg:px-24 py-8 md:py-12">
@@ -221,6 +222,23 @@ export default function AnalysisDashboard() {
                 </h4>
                 <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
                   {t('dashboard.unsupportedSpeciesWarningDesc', 'This model is calibrated specifically for South Asian Carps (Rohu, Catla, Mrigal). Textural and structural markers for other species might result in inaccurate grading.')}
+                </p>
+              </div>
+            </div>
+          </GlassCard>
+        )}
+
+        {fraudData.detected && (
+          <GlassCard className="p-6 border-l-4 border-error! mb-6 pulse-glow" variant="tonal">
+            <div className="flex gap-4 items-start">
+              <AlertTriangle className="text-error shrink-0" size={24} />
+              <div>
+                <h4 className="font-bold text-error text-sm mb-1">
+                  {t('dashboard.suspectedFraudTitle', 'SUSPECTED MARKET FRAUD')}
+                </h4>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  {t('dashboard.suspectedFraudDesc', 'This scan has been flagged by the AI fraud detection engine: ')}
+                  <span className="font-bold text-error font-mono">{fraudData.reason}</span>
                 </p>
               </div>
             </div>

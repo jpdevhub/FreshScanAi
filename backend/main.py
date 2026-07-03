@@ -329,6 +329,9 @@ def _row_to_payload(row: dict) -> dict:
     if not bm:
         bm = _build_biomarkers(freshness, freshness, freshness)
 
+    fraud_detected = any("fraud" in a.lower() or "dye" in a.lower() or "manipulation" in a.lower() or "duplicate" in a.lower() or "artificial" in a.lower() for a in alerts)
+    fraud_reason = next((a for a in alerts if "fraud" in a.lower() or "dye" in a.lower() or "manipulation" in a.lower() or "duplicate" in a.lower() or "artificial" in a.lower()), "")
+
     return {
         "scan_id": row["id"],
         "scan_display_id": row.get("scan_display_id") or row["id"][:8].upper(),
@@ -344,6 +347,10 @@ def _row_to_payload(row: dict) -> dict:
             "consume_within_hours": row.get("storage_hours") or 0,
             "storage_temp": "0-4 C",
             "alert_flags": alerts,
+        },
+        "fraud": {
+            "detected": fraud_detected,
+            "reason": fraud_reason
         },
         "photo_url": photos[0] if photos else None,
         "market_name": row.get("market_name"),
@@ -491,6 +498,12 @@ async def process_scan(
         else:
             detected_species = random.choice(["Rohu Carp", "Catla Carp", "Mrigal Carp"])
 
+        alerts = []
+        if "dyed" in fname or "color" in fname or (gill >= 90 and body <= 55):
+            alerts.append("Potential Artificial Coloring (Gills Dyed)")
+        if "duplicate" in fname or "copy" in fname:
+            alerts.append("Duplicate Scan Attempt (Trust Manipulation)")
+
         demo_fusion = {
             "final_score_percent": score,
             "final_grade": "A" if score >= 75 else "B" if score >= 60 else "C",
@@ -504,6 +517,8 @@ async def process_scan(
         }
         payload = _build_scan_payload(demo_fusion, scan_id, display_id)
         payload["species"] = _build_species_info(detected_species)
+        if alerts:
+            payload["recommendations"]["alert_flags"] = alerts
 
         try:
             _db().table("scans").insert(
@@ -641,6 +656,12 @@ async def scan_auto(
         else:
             detected_species = random.choice(["Rohu Carp", "Catla Carp", "Mrigal Carp"])
 
+        alerts = []
+        if "dyed" in fname or "color" in fname or (gill >= 90 and body <= 55):
+            alerts.append("Potential Artificial Coloring (Gills Dyed)")
+        if "duplicate" in fname or "copy" in fname:
+            alerts.append("Duplicate Scan Attempt (Trust Manipulation)")
+
         demo_fusion = {
             "final_score_percent": score,
             "confidence_score": conf,
@@ -654,6 +675,8 @@ async def scan_auto(
         photo_url = await _upload_image(image_bytes, str(current_user.id), scan_id)
         payload = _build_scan_payload(demo_fusion, scan_id, display_id, photo_url)
         payload["species"] = _build_species_info(detected_species)
+        if alerts:
+            payload["recommendations"]["alert_flags"] = alerts
 
         try:
             _db().table("scans").insert(
