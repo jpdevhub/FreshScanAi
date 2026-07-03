@@ -6,7 +6,8 @@ import GlassCard from '../components/GlassCard';
 import StatusTerminal from '../components/StatusTerminal';
 import { api } from '../lib/api';
 import { offlineDb } from '../lib/offlineDb';
-import type { ScanResult } from '../lib/types';
+import type { ScanResult, HistoryScan } from '../lib/types';
+import AnalyticsTrends from '../components/AnalyticsTrends';
 
 const BIOMARKER_META = {
   gill_saturation: { labelKey: 'dashboard.gill_saturation', icon: Droplets },
@@ -25,10 +26,12 @@ function gradeColor(grade: string) {
 export default function AnalysisDashboard() {
   const { t } = useTranslation();
 
-      const [params] = useSearchParams();
+  const [params] = useSearchParams();
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorKey, setErrorKey] = useState('');
+  const [dashboardTab, setDashboardTab] = useState<'assessment' | 'analytics'>('assessment');
+  const [scansHistory, setScansHistory] = useState<HistoryScan[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -84,6 +87,13 @@ export default function AnalysisDashboard() {
           : await api.getLatestScan();
 
         setScan(res.scan);
+
+        try {
+          const hist = await api.getScanHistory(50, 0);
+          setScansHistory(hist.scans);
+        } catch (e) {
+          console.error("Failed to load history for trends:", e);
+        }
       } catch (err) {
         if (err instanceof Error && err.message.startsWith('error.')) {
           setErrorKey(err.message);
@@ -151,7 +161,33 @@ export default function AnalysisDashboard() {
           className="mb-6"
         />
 
-        {uncertain_flag && (
+        {/* Dashboard Tab Selector */}
+        <div className="flex border-b border-outline-variant mb-6">
+          <button
+            onClick={() => setDashboardTab('assessment')}
+            className={`font-display font-bold text-xs tracking-wider px-6 py-3 border-none cursor-pointer bg-transparent transition-colors ${
+              dashboardTab === 'assessment' 
+                ? 'text-neon border-b-2 border-neon! font-black' 
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            {t('dashboard.assessmentReportTab', 'ASSESSMENT REPORT')}
+          </button>
+          <button
+            onClick={() => setDashboardTab('analytics')}
+            className={`font-display font-bold text-xs tracking-wider px-6 py-3 border-none cursor-pointer bg-transparent transition-colors ${
+              dashboardTab === 'analytics' 
+                ? 'text-neon border-b-2 border-neon! font-black' 
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            {t('dashboard.analyticsTrendsTab', 'MARKET TRENDS')}
+          </button>
+        </div>
+
+        {dashboardTab === 'assessment' ? (
+          <>
+            {uncertain_flag && (
           <GlassCard className="p-6 border-l-4 border-error! mb-6 pulse-glow" variant="tonal">
             <div className="flex gap-4 items-start">
               <AlertTriangle className="text-error shrink-0" size={24} />
@@ -360,6 +396,10 @@ export default function AnalysisDashboard() {
             )}
           </div>
         </div>
+        </>
+        ) : (
+          <AnalyticsTrends scans={scansHistory} />
+        )}
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3">
