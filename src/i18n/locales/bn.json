@@ -194,7 +194,20 @@
     "percentageSymbol": "%",
     "noScansFound": "কোনো স্ক্যান পাওয়া যায়নি",
     "runFirstScan": "প্রথম স্ক্যান চালান",
-    "initiateFirstScan": "প্রথম স্ক্যান শুরু করুন"
+    "initiateFirstScan": "প্রথম স্ক্যান শুরু করুন",
+    "enterCompare": "স্ক্যান তুলনা করুন",
+    "exitCompare": "তুলনা বাতিল করুন",
+    "selectOneMore": "তুলনা করতে আরও ১টি স্ক্যান নির্বাচন করুন",
+    "readyToCompare": "তুলনার জন্য ২টি স্ক্যান নির্বাচিত",
+    "compareNow": "এখনই তুলনা করুন",
+    "compareTitle": "বায়োমার্কার তাজাতা তুলনা",
+    "sideBySide": "নমুনা তুলনা মোড",
+    "varianceLabel": "পার্থক্য ও ক্ষয় পরিমাপ",
+    "identicalFreshness": "নমুনা দুটির তাজাতা সূচক একই।",
+    "specimenA": "নমুনা A",
+    "fresher": "অধিক তাজা",
+    "moreDecayed": "অধিক পচা",
+    "thanSpecimenB": "নমুনা B এর চেয়ে"
   },
   "marketMap": {
     "failedLoadMarketData": "লাইভ বাজার ডেটা লোড করতে ব্যর্থ।",

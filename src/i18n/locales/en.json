@@ -194,7 +194,20 @@
     "percentageSymbol": "%",
     "noScansFound": "NO SCANS FOUND",
     "runFirstScan": "RUN FIRST SCAN",
-    "initiateFirstScan": "INITIATE FIRST SCAN"
+    "initiateFirstScan": "INITIATE FIRST SCAN",
+    "enterCompare": "COMPARE SCANS",
+    "exitCompare": "CANCEL COMPARE",
+    "selectOneMore": "SELECT 1 MORE SCAN TO COMPARE",
+    "readyToCompare": "2 SCANS SELECTED FOR COMPARISON",
+    "compareNow": "COMPARE NOW",
+    "compareTitle": "Biomarker Freshness Comparison",
+    "sideBySide": "Specimen Comparison Mode",
+    "varianceLabel": "Variance & Decay Metrics",
+    "identicalFreshness": "Specimens have identical freshness indices.",
+    "specimenA": "Specimen A",
+    "fresher": "fresher",
+    "moreDecayed": "more decayed",
+    "thanSpecimenB": "than Specimen B"
   },
   "marketMap": {
     "failedLoadMarketData": "Failed to load live market data.",
