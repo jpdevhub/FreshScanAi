@@ -130,11 +130,67 @@ export default function ScannerPage() {
   const [copied, setCopied] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cameraErrorKey, setCameraErrorKey] = useState<string | null>(null);
+  const [syncingScans, setSyncingScans] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  const checkAndSyncScans = useCallback(async () => {
+    if (!navigator.onLine || syncingScans) return;
+    try {
+      const pending = await offlineDb.getPendingScans();
+      setPendingCount(pending.length);
+      if (pending.length === 0) return;
+
+      setSyncingScans(true);
+      const syncToastId = toast.loading(t('scanner.syncingScans', 'Syncing offline scans in background...'), { id: 'offline-sync' });
+
+      let successCount = 0;
+      for (const scan of pending) {
+        try {
+          await api.submitScan(scan.image, {
+            freshness_label: scan.metadata.label,
+            fused_score: scan.metadata.freshness_index / 100,
+            confidence_score: scan.metadata.confidence,
+            species_detected: scan.metadata.species_detected,
+            source: 'edge_onnx',
+          }, { silent: true });
+
+          await offlineDb.deleteScan(scan.id);
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to sync scan ${scan.id}:`, err);
+          await offlineDb.updateScanStatus(scan.id, 'failed', String(err));
+        }
+      }
+
+      setSyncingScans(false);
+      const remaining = await offlineDb.getPendingScans();
+      setPendingCount(remaining.length);
+
+      if (successCount > 0) {
+        toast.success(t('scanner.syncSuccess', `Successfully synchronized ${successCount} offline scans!`), { id: 'offline-sync' });
+      } else {
+        toast.dismiss('offline-sync');
+      }
+    } catch (err) {
+      console.error('Error during offline sync:', err);
+      setSyncingScans(false);
+      toast.dismiss('offline-sync');
+    }
+  }, [syncingScans, t]);
+
+  useEffect(() => {
+    checkAndSyncScans();
+
+    window.addEventListener('online', checkAndSyncScans);
+    return () => {
+      window.removeEventListener('online', checkAndSyncScans);
+    };
+  }, [checkAndSyncScans]);
 
   // ── Pre-warm ONNX engine on mount (runs in background) ────────────────────
   useEffect(() => {
@@ -270,7 +326,7 @@ export default function ScannerPage() {
         });
         setScanPhase("done");
 
-        // Best-effort backend save (non-blocking, offline-safe)
+        // Offline PWA Save
         const canvas = document.createElement("canvas");
         canvas.width = 224;
         canvas.height = 224;
@@ -278,20 +334,45 @@ export default function ScannerPage() {
         canvas.toBlob(
           async (saveBlob) => {
             if (!saveBlob) return;
+            const offlineId = `offline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const offlineScanRecord = {
+              id: offlineId,
+              image: saveBlob,
+              metadata: {
+                freshness_index: freshness,
+                grade: deriveGrade(freshness),
+                label: fusion.label,
+                confidence: fusion.confidence,
+                timestamp: new Date().toISOString(),
+                species_detected: "Rohu Carp"
+              },
+              status: 'pending' as const
+            };
+
             try {
-              const saved = await api.submitScan(
-                saveBlob,
-                {
-                  freshness_label: fusion.label,
-                  fused_score: fusion.fusedScore,
-                  source: "edge_onnx",
-                },
-              );
-              if (saved?.scan?.scan_id) {
-                sessionStorage.setItem("lastScanId", saved.scan.scan_id);
+              if (navigator.onLine) {
+                const saved = await api.submitScan(
+                  saveBlob,
+                  {
+                    freshness_label: fusion.label,
+                    fused_score: fusion.fusedScore,
+                    source: "edge_onnx",
+                    confidence_score: fusion.confidence,
+                    species_detected: "Rohu Carp"
+                  },
+                  { silent: true }
+                );
+                if (saved?.scan?.scan_id) {
+                  sessionStorage.setItem("lastScanId", saved.scan.scan_id);
+                }
+              } else {
+                throw new Error("Offline");
               }
-            } catch {
-              /* offline or backend down — result still shown locally */
+            } catch (err) {
+              await offlineDb.addScan(offlineScanRecord);
+              sessionStorage.setItem("lastScanId", offlineId);
+              setPendingCount(prev => prev + 1);
+              toast.success(t('scanner.savedOffline', 'Saved scan locally (offline mode)'));
             }
           },
           "image/jpeg",
@@ -393,6 +474,32 @@ export default function ScannerPage() {
       <div className="relative flex-1 flex flex-col">
         {/* ── Viewport ──────────────────────────────────────────────────── */}
         <div className="relative flex-1 bg-surface-lowest flex items-center justify-center min-h-[60vh] overflow-hidden">
+          {pendingCount > 0 && (
+            <div className="absolute top-4 inset-x-4 z-40">
+              <GlassCard className="p-3 border-l-4 border-secondary! flex items-center justify-between" variant="tonal">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${syncingScans ? 'bg-secondary' : 'bg-neon'}`} />
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${syncingScans ? 'bg-secondary' : 'bg-neon'}`} />
+                  </span>
+                  <span className="font-mono text-[0.625rem] tracking-widest text-on-surface uppercase">
+                    {syncingScans 
+                      ? t('scanner.syncingScans', 'Syncing offline scans in background...') 
+                      : `${pendingCount} ${t('scanner.pendingSyncScans', 'OFFLINE SCANS PENDING SYNC')}`}
+                  </span>
+                </div>
+                {!syncingScans && navigator.onLine && (
+                  <button 
+                    onClick={checkAndSyncScans}
+                    className="font-mono text-[0.55rem] tracking-widest bg-secondary text-on-primary px-3 py-1 font-bold border-none hover:bg-neon transition-colors cursor-pointer"
+                  >
+                    {t('scanner.syncNowButton', 'SYNC NOW')}
+                  </button>
+                )}
+              </GlassCard>
+            </div>
+          )}
+
           {/* Preview or live camera */}
           {previewUrl && !isScanning ? (
             <img
