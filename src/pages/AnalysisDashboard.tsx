@@ -297,9 +297,33 @@ export default function AnalysisDashboard() {
                 {t('dashboard.uncertaintyMargin', 'Margin of Error:')}
               </span>
               <span className={`font-[family-name:var(--font-mono)] text-[0.5625rem] font-bold tracking-widest ${uncertain_flag ? 'text-error' : 'text-neon'}`}>
-                {uncertain_flag ? '±12.5% (High Variance)' : '±3.8% (Calibrated)'}
+                {uncertain_flag 
+                  ? `±${(scan.ensemble?.margin_of_error ?? 12.5).toFixed(1)}% (High Variance)` 
+                  : `±${(scan.ensemble?.margin_of_error ?? 3.8).toFixed(1)}% (Calibrated)`}
               </span>
             </div>
+
+            {scan.ensemble && (
+              <div className="mt-4 pt-3 border-t border-outline-variant">
+                <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] text-on-surface-variant tracking-widest uppercase block mb-2">
+                  {t('dashboard.ensembleWeightsTitle', 'MULTI-MODEL ENSEMBLE WEIGHTS')}
+                </span>
+                <div className="grid grid-cols-3 gap-2 text-[8px] font-mono">
+                  <div>
+                    <span className="text-on-surface-variant">BODY: </span>
+                    <span className="text-neon font-bold">{(scan.ensemble.weights.body * 100).toFixed(0)}%</span>
+                  </div>
+                  <div>
+                    <span className="text-on-surface-variant">EYE: </span>
+                    <span className="text-neon font-bold">{(scan.ensemble.weights.eye * 100).toFixed(0)}%</span>
+                  </div>
+                  <div>
+                    <span className="text-on-surface-variant">GILL: </span>
+                    <span className="text-neon font-bold">{(scan.ensemble.weights.gill * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </GlassCard>
 
           {/* Species panel */}

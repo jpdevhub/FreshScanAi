@@ -31,6 +31,23 @@ export interface ScanResult {
     storage_temp: string;
     alert_flags: string[];
   };
+  fraud?: {
+    detected: boolean;
+    reason: string;
+  };
+  ensemble?: {
+    weights: {
+      body: number;
+      eye: number;
+      gill: number;
+    };
+    qualities: {
+      body: number;
+      eye: number;
+      gill: number;
+    };
+    margin_of_error: number;
+  };
   photo_url?: string | null;
   market_name?: string | null;
   timestamp?: string | null;

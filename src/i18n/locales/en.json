@@ -169,7 +169,8 @@
     "preservMrigal": "Mrigal has a thin build. Store flat in ice; do not stack to avoid muscular tissue bruising.",
     "preservDefault": "Store below 4°C. vacuum seal or wrap tightly in parchment paper to prevent freezer burn.",
     "suspectedFraudTitle": "SUSPECTED MARKET FRAUD",
-    "suspectedFraudDesc": "This scan has been flagged by the AI fraud detection engine: "
+    "suspectedFraudDesc": "This scan has been flagged by the AI fraud detection engine: ",
+    "ensembleWeightsTitle": "MULTI-MODEL ENSEMBLE WEIGHTS"
   },
   "auth": {
     "authInitiated": "AUTH INITIATED",
