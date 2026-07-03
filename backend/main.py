@@ -299,7 +299,7 @@ def _row_to_payload(row: dict) -> dict:
         "confidence": round((row.get("confidence_score") or 0) * 100, 1),
         "classification": "FRESH" if is_fresh else "SPOILED",
         "is_fresh": is_fresh,
-        "uncertain_flag": False,
+        "uncertain_flag": (row.get("confidence_score") or 1.0) < 0.70,
         "species": {
             "common_name": "Rohu Carp",
             "scientific_name": "Labeo rohita",
