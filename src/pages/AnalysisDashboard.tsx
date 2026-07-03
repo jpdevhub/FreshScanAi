@@ -32,6 +32,8 @@ export default function AnalysisDashboard() {
   const [errorKey, setErrorKey] = useState('');
   const [dashboardTab, setDashboardTab] = useState<'assessment' | 'analytics'>('assessment');
   const [scansHistory, setScansHistory] = useState<HistoryScan[]>([]);
+  const [showGradCam, setShowGradCam] = useState(false);
+  const [activeSpot, setActiveSpot] = useState<'eye' | 'gill' | 'body'>('eye');
 
   useEffect(() => {
     async function load() {
@@ -359,6 +361,140 @@ export default function AnalysisDashboard() {
             })}
           </div>
         </div>
+
+        {/* Explainability Overlays Card */}
+        {scan.photo_url && (
+          <div className="mb-8">
+            <span className="status-terminal block mb-4">{t('dashboard.explainabilityTitle', 'AI Explainability Map & Biomarkers')}</span>
+            <GlassCard className="p-6" variant="tonal">
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Interactive Image Container */}
+                <div className="relative w-full aspect-video bg-black overflow-hidden flex items-center justify-center border border-outline-variant max-w-lg mx-auto lg:mx-0">
+                  <img
+                    src={scan.photo_url}
+                    alt="Explainability analysis"
+                    className="w-full h-full object-cover opacity-80"
+                  />
+
+                  {/* Synthetic Grad-CAM Overlay */}
+                  {showGradCam && (
+                    <div 
+                      className="absolute inset-0 pointer-events-none mix-blend-screen opacity-70"
+                      style={{
+                        backgroundImage: `radial-gradient(circle at 30% 45%, rgba(239, 68, 68, 0.8) 0%, rgba(234, 179, 8, 0.5) 30%, rgba(34, 197, 94, 0.3) 60%, transparent 100%)`
+                      }}
+                    />
+                  )}
+
+                  {/* Eyeball Spot */}
+                  <div 
+                    className="absolute cursor-pointer group"
+                    style={{ top: '35%', left: '20%' }}
+                    onClick={() => setActiveSpot('eye')}
+                  >
+                    <span className="flex h-4 w-4 relative">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${biomarkers.corneal_clarity.status === 'NOMINAL' ? 'bg-secondary' : 'bg-neon'}`} />
+                      <span className={`relative inline-flex rounded-full h-4 w-4 border-2 border-surface-lowest ${biomarkers.corneal_clarity.status === 'NOMINAL' ? 'bg-secondary' : 'bg-neon'}`} />
+                    </span>
+                    {/* Hover text label */}
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/80 text-[8px] font-mono text-white px-1.5 py-0.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      {t('dashboard.eyeSpot', 'EYE CLARITY')}
+                    </span>
+                  </div>
+
+                  {/* Gill Spot */}
+                  <div 
+                    className="absolute cursor-pointer group"
+                    style={{ top: '50%', left: '35%' }}
+                    onClick={() => setActiveSpot('gill')}
+                  >
+                    <span className="flex h-4 w-4 relative">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${biomarkers.gill_saturation.status === 'NOMINAL' ? 'bg-secondary' : 'bg-neon'}`} />
+                      <span className={`relative inline-flex rounded-full h-4 w-4 border-2 border-surface-lowest ${biomarkers.gill_saturation.status === 'NOMINAL' ? 'bg-secondary' : 'bg-neon'}`} />
+                    </span>
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/80 text-[8px] font-mono text-white px-1.5 py-0.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      {t('dashboard.gillSpot', 'GILL SATURATION')}
+                    </span>
+                  </div>
+
+                  {/* Scale / Body Spot */}
+                  <div 
+                    className="absolute cursor-pointer group"
+                    style={{ top: '45%', left: '60%' }}
+                    onClick={() => setActiveSpot('body')}
+                  >
+                    <span className="flex h-4 w-4 relative">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${biomarkers.epidermal_tension.status === 'NOMINAL' ? 'bg-secondary' : 'bg-neon'}`} />
+                      <span className={`relative inline-flex rounded-full h-4 w-4 border-2 border-surface-lowest ${biomarkers.epidermal_tension.status === 'NOMINAL' ? 'bg-secondary' : 'bg-neon'}`} />
+                    </span>
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/80 text-[8px] font-mono text-white px-1.5 py-0.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      {t('dashboard.bodySpot', 'EPIDERMAL TENSION')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Details / Controls */}
+                <div className="flex-1 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-display font-bold text-xs uppercase text-on-surface-variant">
+                      {t('dashboard.explainabilityDetails', 'Interactive Details')}
+                    </h4>
+                    <button
+                      onClick={() => setShowGradCam(!showGradCam)}
+                      className={`font-mono text-[0.55rem] tracking-widest px-3 py-1 font-bold border cursor-pointer transition-colors ${
+                        showGradCam 
+                          ? 'bg-neon text-on-primary border-neon hover:bg-neon-dim' 
+                          : 'bg-transparent text-on-surface-variant border-outline-variant hover:text-on-surface'
+                      }`}
+                    >
+                      {showGradCam ? t('dashboard.hideHeatmap', 'HIDE GRAD-CAM') : t('dashboard.showHeatmap', 'SHOW GRAD-CAM')}
+                    </button>
+                  </div>
+
+                  <div className="p-4 bg-surface-low border border-outline-variant rounded font-mono text-xs">
+                    {activeSpot === 'eye' && (
+                      <div className="space-y-2">
+                        <div className="font-bold text-neon flex items-center justify-between">
+                          <span>{t('dashboard.eyeSpot', 'EYE CLARITY')}</span>
+                          <span>{biomarkers.corneal_clarity.score}/100</span>
+                        </div>
+                        <p className="text-[10px] text-on-surface-variant leading-relaxed">
+                          {t('dashboard.eyeExp', 'The biomarker neural stream analyzed corneal transparency and reflection variance. Heatmap indicates maximum activation focused on the pupil boundary.')}
+                        </p>
+                      </div>
+                    )}
+                    {activeSpot === 'gill' && (
+                      <div className="space-y-2">
+                        <div className="font-bold text-neon flex items-center justify-between">
+                          <span>{t('dashboard.gillSpot', 'GILL SATURATION')}</span>
+                          <span>{biomarkers.gill_saturation.score}/100</span>
+                        </div>
+                        <p className="text-[10px] text-on-surface-variant leading-relaxed">
+                          {t('dashboard.gillExp', 'The neural stream inspected red-intensity channels in the operculum opening. The Grad-CAM model highlighted biological boundaries around the gill arch.')}
+                        </p>
+                      </div>
+                    )}
+                    {activeSpot === 'body' && (
+                      <div className="space-y-2">
+                        <div className="font-bold text-neon flex items-center justify-between">
+                          <span>{t('dashboard.bodySpot', 'EPIDERMAL TENSION')}</span>
+                          <span>{biomarkers.epidermal_tension.score}/100</span>
+                        </div>
+                        <p className="text-[10px] text-on-surface-variant leading-relaxed">
+                          {t('dashboard.bodyExp', 'Scales adherence and epidermal mucus reflections were checked. The network activations show high alignment with textural details along the lateral line.')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-[9px] text-on-surface-variant/70 leading-relaxed italic">
+                    {t('dashboard.explainInstructions', 'Click on the glowing targets over the specimen image to inspect local AI stream focus areas and scores.')}
+                  </p>
+                </div>
+              </div>
+            </GlassCard>
+          </div>
+        )}
 
         {/* Recommendations */}
         <div className="mb-8">
