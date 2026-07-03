@@ -120,12 +120,12 @@ export interface GradcamResponse {
   mode: "real" | "demo";
 }
 
-// Metadata sent alongside edge-inference results so the backend can store them
-// without re-running the ML pipeline on the server.
 export interface EdgeInferenceMeta {
   freshness_label?: string;
   fused_score?: number;
   source?: "edge_onnx" | "server";
+  confidence_score?: number;
+  species_detected?: string;
 }
 
 // ── API surface ───────────────────────────────────────────────────────────────
@@ -165,6 +165,10 @@ export const api = {
     if (meta?.fused_score !== undefined)
       form.append("fused_score", String(meta.fused_score));
     if (meta?.source) form.append("source", meta.source);
+    if (meta?.confidence_score !== undefined)
+      form.append("confidence_score", String(meta.confidence_score));
+    if (meta?.species_detected)
+      form.append("species_detected", meta.species_detected);
 
     const validRes = await safeFetch(
       `${API_BASE}/api/v1/scan-auto`,
