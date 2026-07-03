@@ -157,7 +157,17 @@
     "assessmentReportTab": "ASSESSMENT REPORT",
     "analyticsTrendsTab": "MARKET TRENDS",
     "unsupportedSpeciesWarningTitle": "Unsupported Species Detected",
-    "unsupportedSpeciesWarningDesc": "This model is calibrated specifically for South Asian Carps (Rohu, Catla, Mrigal). Textural and structural markers for other species might result in inaccurate grading."
+    "unsupportedSpeciesWarningDesc": "This model is calibrated specifically for South Asian Carps (Rohu, Catla, Mrigal). Textural and structural markers for other species might result in inaccurate grading.",
+    "culinaryAdviceTitle": "Culinary Recommendations",
+    "culinaryHigh": "Raw/Sushi-grade freshness. Ideal for light steaming, pan-searing, or immediate raw preparation.",
+    "culinaryModerate": "High-quality cooking grade. Optimal for traditional fish curries, baking, or light grilling.",
+    "culinaryLow": "Requires heavy spicing or deep frying to offset texture softenings. Ensure thorough cooking.",
+    "culinarySpoiled": "Discard immediately. Do not consume under any circumstances.",
+    "preservationTitle": "Preservation Protocol",
+    "preservRohu": "Rohu has dense scales. Rub with turmeric paste before refrigerating to prevent skin dehydration.",
+    "preservCatla": "Catla is a thick steak-cut. Slice into small portions before freezing to ensure uniform cooling.",
+    "preservMrigal": "Mrigal has a thin build. Store flat in ice; do not stack to avoid muscular tissue bruising.",
+    "preservDefault": "Store below 4°C. vacuum seal or wrap tightly in parchment paper to prevent freezer burn."
   },
   "auth": {
     "authInitiated": "AUTH INITIATED",

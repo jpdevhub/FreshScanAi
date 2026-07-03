@@ -512,40 +512,67 @@ export default function AnalysisDashboard() {
           </div>
         )}
 
-        {/* Recommendations */}
-        <div className="mb-8">
+        {/* Recommendations & Smart Kitchen Engine */}
+        <div className="mb-8 space-y-4">
           <span className="status-terminal block mb-4">{t('dashboard.storageRecommendations')}</span>
-          <div className={`grid gap-3 ${alerts.length > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-            <GlassCard className="p-4 text-center" variant="tonal">
-              <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant block mb-2">
-                {t('dashboard.consumeWithin')}
-              </span>
-              <span className="font-[family-name:var(--font-display)] text-lg font-bold text-neon">
-                {recommendations.consume_within_hours > 0
-                  ? `${recommendations.consume_within_hours} ${t('dashboard.consumeHours')}`
-                  : t('dashboard.discardAction')}
-              </span>
-            </GlassCard>
-
-            <GlassCard className="p-4 text-center" variant="tonal">
-              <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant block mb-2">
-                {t('dashboard.storageTemp')}
-              </span>
-              <span className="font-[family-name:var(--font-display)] text-lg font-bold text-neon">
-                {recommendations.storage_temp}
-              </span>
-            </GlassCard>
-
-            {alerts.length > 0 && (
-              <GlassCard className="p-4 text-center" variant="void">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Primary stats */}
+            <GlassCard className="p-5 flex flex-col justify-between" variant="tonal">
+              <div>
                 <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant block mb-2">
-                  {t('dashboard.alertLabel')}
+                  {t('dashboard.consumeWithin')}
                 </span>
-                <span className="font-[family-name:var(--font-display)] text-sm font-bold text-error">
-                  {alerts[0]}
+                <span className="font-[family-name:var(--font-display)] text-2xl font-bold text-neon block mb-4">
+                  {recommendations.consume_within_hours > 0
+                    ? `${recommendations.consume_within_hours} ${t('dashboard.consumeHours')}`
+                    : t('dashboard.discardAction')}
                 </span>
-              </GlassCard>
-            )}
+              </div>
+              <div>
+                <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant block mb-2">
+                  {t('dashboard.storageTemp')}
+                </span>
+                <span className="font-[family-name:var(--font-display)] text-lg font-bold text-secondary">
+                  {recommendations.storage_temp}
+                </span>
+              </div>
+            </GlassCard>
+
+            {/* Culinary Advice Engine */}
+            <GlassCard className="p-5" variant="glass">
+              <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant block mb-2">
+                {t('dashboard.culinaryAdviceTitle', 'Culinary Recommendations')}
+              </span>
+              <p className="text-xs font-mono text-on-surface leading-relaxed">
+                {freshness_index >= 85 ? (
+                  t('dashboard.culinaryHigh', 'Raw/Sushi-grade freshness. Ideal for light steaming, pan-searing, or immediate raw preparation.')
+                ) : freshness_index >= 65 ? (
+                  t('dashboard.culinaryModerate', 'High-quality cooking grade. Optimal for traditional fish curries, baking, or light grilling.')
+                ) : freshness_index >= 50 ? (
+                  t('dashboard.culinaryLow', 'Requires heavy spicing or deep frying to offset texture softenings. Ensure thorough cooking.')
+                ) : (
+                  t('dashboard.culinarySpoiled', 'Discard immediately. Do not consume under any circumstances.')
+                )}
+              </p>
+            </GlassCard>
+
+            {/* Species-Specific Preservation */}
+            <GlassCard className="p-5" variant="glass">
+              <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant block mb-2">
+                {t('dashboard.preservationTitle', 'Preservation Protocol')}
+              </span>
+              <p className="text-xs font-mono text-on-surface-variant leading-relaxed">
+                {species.common_name === "Rohu Carp" ? (
+                  t('dashboard.preservRohu', 'Rohu has dense scales. Rub with turmeric paste before refrigerating to prevent skin dehydration.')
+                ) : species.common_name === "Catla Carp" ? (
+                  t('dashboard.preservCatla', 'Catla is a thick steak-cut. Slice into small portions before freezing to ensure uniform cooling.')
+                ) : species.common_name === "Mrigal Carp" ? (
+                  t('dashboard.preservMrigal', 'Mrigal has a thin build. Store flat in ice; do not stack to avoid muscular tissue bruising.')
+                ) : (
+                  t('dashboard.preservDefault', 'Store below 4°C. vacuum seal or wrap tightly in parchment paper to prevent freezer burn.')
+                )}
+              </p>
+            </GlassCard>
           </div>
         </div>
         </>
