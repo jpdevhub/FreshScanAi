@@ -5,6 +5,7 @@ import { ArrowLeft, AlertTriangle, Droplets, Eye as EyeIcon, Fish } from 'lucide
 import GlassCard from '../components/GlassCard';
 import StatusTerminal from '../components/StatusTerminal';
 import { api } from '../lib/api';
+import { offlineDb } from '../lib/offlineDb';
 import type { ScanResult } from '../lib/types';
 
 const BIOMARKER_META = {
@@ -37,6 +38,46 @@ export default function AnalysisDashboard() {
         const idParam = params.get('id');
         const lastId = sessionStorage.getItem('lastScanId');
         const targetId = idParam || lastId;
+
+        if (targetId && targetId.startsWith('offline-')) {
+          const pending = await offlineDb.getPendingScans();
+          const found = pending.find(p => p.id === targetId);
+          if (found) {
+            const scoreVal = found.metadata.freshness_index;
+            const offlineScanResult: ScanResult = {
+              scan_id: found.id,
+              scan_display_id: found.id.substring(8, 18).toUpperCase(),
+              freshness_index: scoreVal,
+              grade: found.metadata.grade,
+              confidence: Math.round((found.metadata.confidence ?? 0.85) * 100),
+              classification: found.metadata.label === 'Fresh' || found.metadata.label === 'Moderate' ? 'FRESH' : 'SPOILED',
+              is_fresh: found.metadata.label === 'Fresh' || found.metadata.label === 'Moderate',
+              uncertain_flag: (found.metadata.confidence ?? 0.85) < 0.70,
+              species: {
+                common_name: found.metadata.species_detected,
+                scientific_name: "Labeo rohita",
+                habitat: "Freshwater",
+                tags: [found.metadata.species_detected.toUpperCase(), "OFFLINE_RECORD"],
+                weight_estimate_kg: 1.2,
+                catch_age_hours: 6
+              },
+              biomarkers: {
+                gill_saturation: { score: scoreVal, status: scoreVal >= 70 ? 'NOMINAL' : 'CAUTION', detail: 'Edge inference offline fallback' },
+                corneal_clarity: { score: scoreVal, status: scoreVal >= 70 ? 'NOMINAL' : 'CAUTION', detail: 'Edge inference offline fallback' },
+                epidermal_tension: { score: scoreVal, status: scoreVal >= 70 ? 'NOMINAL' : 'CAUTION', detail: 'Edge inference offline fallback' }
+              },
+              recommendations: {
+                consume_within_hours: Math.max(0, Math.floor((scoreVal - 40) * 0.6)),
+                storage_temp: "0-4 C",
+                alert_flags: []
+              },
+              photo_url: URL.createObjectURL(found.image),
+              timestamp: found.metadata.timestamp
+            };
+            setScan(offlineScanResult);
+            return;
+          }
+        }
 
         const res = targetId
           ? await api.getScan(targetId)
