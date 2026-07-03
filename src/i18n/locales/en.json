@@ -232,7 +232,13 @@
     "scansLabel": "SCANS",
     "scans": "Scans",
     "subtitle": "RANKINGS BASED ON ANONYMOUS FRESHNESS SCANS ACROSS MARKETS",
-    "title": "VENDOR TRUST LEADERBOARD"
+    "title": "VENDOR TRUST LEADERBOARD",
+    "vendorDetailsHeader": "VENDOR REPUTATION DETAILS",
+    "trustIndex": "TRUST INDEX",
+    "scansRecorded": "SCANS RECORDED",
+    "reportDiscrepancy": "FILE FRESHNESS REPORT",
+    "reportPlaceholder": "Enter details of the fish freshness bought, or any dispute...",
+    "recentReports": "VERIFIED CONSUMER FEED"
   },
   "modeSelect": {
     "individual": {
