@@ -280,6 +280,44 @@ def _build_scan_payload(
     }
 
 
+def _build_species_info(species_name: str) -> dict:
+    species_map = {
+        "Rohu Carp": {
+            "common_name": "Rohu Carp",
+            "scientific_name": "Labeo rohita",
+            "habitat": "Freshwater",
+            "tags": ["ROHU CARP", "LABEO ROHITA", "FRESHWATER"],
+            "weight_estimate_kg": 1.2,
+            "catch_age_hours": 6,
+        },
+        "Catla Carp": {
+            "common_name": "Catla Carp",
+            "scientific_name": "Gibelion catla",
+            "habitat": "Freshwater",
+            "tags": ["CATLA CARP", "GIBELION CATLA", "FRESHWATER"],
+            "weight_estimate_kg": 2.4,
+            "catch_age_hours": 4,
+        },
+        "Mrigal Carp": {
+            "common_name": "Mrigal Carp",
+            "scientific_name": "Cirrhinus cirrhosus",
+            "habitat": "Freshwater",
+            "tags": ["MRIGAL CARP", "CIRRHINUS CIRRHOSUS", "FRESHWATER"],
+            "weight_estimate_kg": 0.9,
+            "catch_age_hours": 8,
+        },
+        "Unsupported Species": {
+            "common_name": "Unsupported Species",
+            "scientific_name": "Unknown specimen",
+            "habitat": "Unknown",
+            "tags": ["UNSUPPORTED", "WARNING"],
+            "weight_estimate_kg": 0.0,
+            "catch_age_hours": 0,
+        }
+    }
+    return species_map.get(species_name, species_map["Rohu Carp"])
+
+
 def _row_to_payload(row: dict) -> dict:
     freshness = row.get("freshness_index") or 0
     is_fresh = freshness >= 65
@@ -300,14 +338,7 @@ def _row_to_payload(row: dict) -> dict:
         "classification": "FRESH" if is_fresh else "SPOILED",
         "is_fresh": is_fresh,
         "uncertain_flag": (row.get("confidence_score") or 1.0) < 0.70,
-        "species": {
-            "common_name": "Rohu Carp",
-            "scientific_name": "Labeo rohita",
-            "habitat": "Freshwater",
-            "tags": ["ROHU CARP", "LABEO ROHITA", "FRESHWATER"],
-            "weight_estimate_kg": 1.2,
-            "catch_age_hours": 6,
-        },
+        "species": _build_species_info(row.get("species_detected") or "Rohu Carp"),
         "biomarkers": bm,
         "recommendations": {
             "consume_within_hours": row.get("storage_hours") or 0,
@@ -450,6 +481,16 @@ async def process_scan(
         score = round((gill + eye + body) / 3.0, 1)
         conf = round(random.uniform(0.82, 0.97), 2)
 
+        fname = (body_image.filename or "").lower()
+        if "catla" in fname:
+            detected_species = "Catla Carp"
+        elif "mrigal" in fname:
+            detected_species = "Mrigal Carp"
+        elif any(k in fname for k in ["salmon", "tilapia", "unsupported", "tuna"]):
+            detected_species = "Unsupported Species"
+        else:
+            detected_species = random.choice(["Rohu Carp", "Catla Carp", "Mrigal Carp"])
+
         demo_fusion = {
             "final_score_percent": score,
             "final_grade": "A" if score >= 75 else "B" if score >= 60 else "C",
@@ -462,6 +503,7 @@ async def process_scan(
             },
         }
         payload = _build_scan_payload(demo_fusion, scan_id, display_id)
+        payload["species"] = _build_species_info(detected_species)
 
         try:
             _db().table("scans").insert(
@@ -474,7 +516,7 @@ async def process_scan(
                     "image_type": "full_scan",
                     "freshness_index": payload["freshness_index"],
                     "scan_display_id": display_id,
-                    "species_detected": "Rohu Carp",
+                    "species_detected": detected_species,
                     "biomarker_json": payload["biomarkers"],
                     "storage_hours": payload["recommendations"]["consume_within_hours"],
                     "alert_flags": payload["recommendations"]["alert_flags"],
@@ -589,6 +631,16 @@ async def scan_auto(
         score = round((gill + eye + body) / 3.0, 1)
         conf = round(random.uniform(0.82, 0.97), 2)
 
+        fname = (image.filename or "").lower()
+        if "catla" in fname:
+            detected_species = "Catla Carp"
+        elif "mrigal" in fname:
+            detected_species = "Mrigal Carp"
+        elif any(k in fname for k in ["salmon", "tilapia", "unsupported", "tuna"]):
+            detected_species = "Unsupported Species"
+        else:
+            detected_species = random.choice(["Rohu Carp", "Catla Carp", "Mrigal Carp"])
+
         demo_fusion = {
             "final_score_percent": score,
             "confidence_score": conf,
@@ -601,6 +653,7 @@ async def scan_auto(
         }
         photo_url = await _upload_image(image_bytes, str(current_user.id), scan_id)
         payload = _build_scan_payload(demo_fusion, scan_id, display_id, photo_url)
+        payload["species"] = _build_species_info(detected_species)
 
         try:
             _db().table("scans").insert(
@@ -612,7 +665,7 @@ async def scan_auto(
                     "image_type": "BODY",
                     "freshness_index": payload["freshness_index"],
                     "scan_display_id": display_id,
-                    "species_detected": "Rohu Carp",
+                    "species_detected": detected_species,
                     "biomarker_json": payload["biomarkers"],
                     "storage_hours": payload["recommendations"]["consume_within_hours"],
                     "alert_flags": payload["recommendations"]["alert_flags"],

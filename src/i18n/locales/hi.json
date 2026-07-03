@@ -155,7 +155,9 @@
     "suggestRescan": "→ नमूने को फिर से स्कैन करने का सुझाव दें",
     "uncertaintyMargin": "त्रुटि मार्जिन:",
     "assessmentReportTab": "मूल्यांकन रिपोर्ट",
-    "analyticsTrendsTab": "बाजार रुझान"
+    "analyticsTrendsTab": "बाजार रुझान",
+    "unsupportedSpeciesWarningTitle": "असमर्थित प्रजाति पाई गई",
+    "unsupportedSpeciesWarningDesc": "यह मॉडल विशेष रूप से दक्षिण एशियाई कार्प (रोहू, कतला, म्रिगल) के लिए कैलिब्रेटेड है। अन्य प्रजातियों के लिए बनावट और संरचनात्मक मार्कर गलत ग्रेडिंग का कारण बन सकते हैं।"
   },
   "auth": {
     "authInitiated": "प्रमाणीकरण शुरू किया गया",
