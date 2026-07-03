@@ -144,7 +144,11 @@
     "storageTemp": "STORAGE TEMP",
     "alertLabel": "ALERT",
     "newScanButton": "NEW SCAN",
-    "viewHistoryButton": "VIEW HISTORY"
+    "viewHistoryButton": "VIEW HISTORY",
+    "uncertainWarningTitle": "AI Prediction Uncertain",
+    "uncertainWarningDesc": "The model detected high variance in input quality (e.g. lighting shadows or off-angles). The freshness index might be less reliable than usual.",
+    "suggestRescan": "→ Suggest Rescanning specimen",
+    "uncertaintyMargin": "Margin of Error:"
   },
   "auth": {
     "authInitiated": "AUTH INITIATED",
