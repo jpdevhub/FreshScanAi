@@ -231,8 +231,14 @@
     "scorePercentage": "/100",
     "scansLabel": "स्कैन",
     "scans": "स्कैन",
-    "subtitle": "उपशीर्षक",
-    "title": "शीर्षक"
+    "subtitle": "बाजारों में अनाम ताजगी स्कैन पर आधारित रैंकिंग",
+    "title": "विक्रेता ट्रस्ट लीडरबोर्ड",
+    "vendorDetailsHeader": "विक्रेता प्रतिष्ठा विवरण",
+    "trustIndex": "विश्वास सूचकांक",
+    "scansRecorded": "स्कैन रिकॉर्ड किए गए",
+    "reportDiscrepancy": "ताजगी रिपोर्ट दर्ज करें",
+    "reportPlaceholder": "खरीदी गई मछली की ताजगी या किसी विवाद का विवरण दर्ज करें...",
+    "recentReports": "सत्यापित उपभोक्ता फीड"
   },
   "modeSelect": {
     "individual": {
