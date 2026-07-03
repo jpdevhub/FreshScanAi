@@ -264,7 +264,7 @@ export default function ScannerPage() {
           label: fusion.label,
           freshness,
           grade: deriveGrade(freshness),
-          confidence: fusion.confidence,
+          confidence: `${Math.round((fusion.confidence ?? 0.9) * 100)}%`,
         });
         setScanPhase("done");
 
