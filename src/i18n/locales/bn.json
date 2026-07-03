@@ -231,8 +231,14 @@
     "scorePercentage": "/100",
     "scansLabel": "স্ক্যান",
     "scans": "স্ক্যান",
-    "subtitle": "উপশিরোনাম",
-    "title": "শিরোনাম"
+    "subtitle": "বাজার জুড়ে অনাম তাজা স্ক্যানের উপর ভিত্তি করে র‍্যাঙ্কিং",
+    "title": "বিক্রেতা বিশ্বাস লিডারবোর্ড",
+    "vendorDetailsHeader": "বিক্রেতার সুনামের বিবরণ",
+    "trustIndex": "বিশ্বাস সূচক",
+    "scansRecorded": "স্ক্যান রেকর্ড করা হয়েছে",
+    "reportDiscrepancy": "তাজা রিপোর্ট দায়ের করুন",
+    "reportPlaceholder": "কেনা মাছের তাজা বা কোনো বিরোধের বিবরণ লিখুন...",
+    "recentReports": "যাচাইকৃত ভোক্তা ফিড"
   },
   "modeSelect": {
     "individual": {
