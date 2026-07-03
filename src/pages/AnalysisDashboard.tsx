@@ -139,7 +139,7 @@ export default function AnalysisDashboard() {
   const { freshness_index, grade, confidence, classification, species, biomarkers, recommendations, fraud } = scan;
   const displayId = scan.scan_display_id;
   const alerts = recommendations.alert_flags;
-  const uncertain_flag = scan.uncertain_flag ?? (confidence < 70);
+  const uncertain_flag = !!scan.uncertain_flag || (confidence < 70);
   const fraudData = fraud || { detected: false, reason: "" };
 
   return (
