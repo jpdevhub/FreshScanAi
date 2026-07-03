@@ -256,6 +256,15 @@ function extractGillScore(logitsB, temperature) {
  * @param {number[]} gillProbs   [P(Fresh_Gills), P(Nonfresh_Gills)]
  * @returns {{ fusedScore: number, label: string, confidence: string }}
  */
+function calculateConfidence(bodyProbs, eyeProbs, gillProbs) {
+  const bodyConf = Math.max(...bodyProbs);
+  const eyeSubSum = (eyeProbs[0] + eyeProbs[2]) || 1e-7;
+  const gillSubSum = (gillProbs[1] + gillProbs[3]) || 1e-7;
+  const eyeConf = Math.max(eyeProbs[0] / eyeSubSum, eyeProbs[2] / eyeSubSum);
+  const gillConf = Math.max(gillProbs[1] / gillSubSum, gillProbs[3] / gillSubSum);
+  return (0.5 * bodyConf) + (0.25 * eyeConf) + (0.25 * gillConf);
+}
+
 function processAndFuse(bodyProbs, eyeProbs, gillProbs) {
   const bodyFresh = bodyProbs[0];   // P(C1 = Fresh)
   const eyeFresh  = eyeProbs[0];    // P(Fresh_Eyes)
@@ -274,10 +283,14 @@ function processAndFuse(bodyProbs, eyeProbs, gillProbs) {
     label = 'Spoiled';
   }
 
+  const systemConfidence = calculateConfidence(bodyProbs, eyeProbs, gillProbs);
+  const isUncertain = systemConfidence < 0.70;
+
   return {
     fusedScore,
     label,
-    confidence: (fusedScore * 100).toFixed(1) + '%',
+    confidence: systemConfidence,
+    uncertain_flag: isUncertain
   };
 }
 
