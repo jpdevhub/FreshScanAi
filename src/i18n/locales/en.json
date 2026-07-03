@@ -108,7 +108,12 @@
     "notFishDetected": "NOT A FISH: No fish detected. Please photograph a fish.",
     "inferenceFailed": "Inference failed.",
     "capturedAlt": "Captured",
-    "rejectedUploadAlt": "Rejected upload"
+    "rejectedUploadAlt": "Rejected upload",
+    "syncingScans": "Syncing offline scans in background...",
+    "syncSuccess": "Successfully synchronized offline scans!",
+    "savedOffline": "Saved scan locally (offline mode)",
+    "pendingSyncScans": "OFFLINE SCANS PENDING SYNC",
+    "syncNowButton": "SYNC NOW"
   },
   "dashboard": {
     "loadingAnalysis": "LOADING ANALYSIS...",
