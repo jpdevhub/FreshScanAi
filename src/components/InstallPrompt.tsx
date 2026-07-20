@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type PromptType = "ios" | "android" | null;
 
-const IOSMsg = "Add FreshScan AI to your Home Screen for one-tap fish freshness analysis. Tap Share and select Add to Home Screen."
-const AndroidMsg = "Add FreshScan AI to your home screen for instant fish freshness analysis in one tap."
+const IOSMsg = 'installPrompt.iosMsg';
+const AndroidMsg = 'installPrompt.androidMsg';
 
 interface BeforeInstallPromptEvent extends Event {
     readonly platforms: string[];
@@ -19,7 +20,9 @@ interface NavigatorWithStandalone extends Navigator {
 }
 
 export default function InstallPrompt() {
-    const [promptType, setpromptType] = useState<PromptType>(() => {
+  const { t } = useTranslation();
+
+          const [promptType, setpromptType] = useState<PromptType>(() => {
         if (typeof window === 'undefined') return null;
 
         const userAgent = navigator.userAgent || navigator.vendor || '';
@@ -91,24 +94,24 @@ export default function InstallPrompt() {
                 <div className="flex items-center gap-4 border-b-4 border-black pb-4">
                     <img
                         src="/fish.gif"
-                        alt="FreshScan AI"
+                        alt={t('installPrompt.alt')}
                         width={56}
                         height={56}
                     />
 
                     <div>
                         <p className="text-xs font-black tracking-widest uppercase">
-                            FreshScan AI
+                            {t('installPrompt.brand')}
                         </p>
 
                         <h2 className="text-xl font-black uppercase">
-                            Install App
+                            {t('installPrompt.installAppTitle')}
                         </h2>
                     </div>
                 </div>
 
                 <p className="mt-4 text-base font-bold leading-relaxed">
-                    {Message}
+                    {t(Message)}
                 </p>
 
                 <div className="mt-5 flex gap-3">
@@ -117,7 +120,7 @@ export default function InstallPrompt() {
                             onClick={handleInstallClick}
                             className="flex-1 border-4 border-black bg-lime-300 px-4 py-3 text-black uppercase shadow-[4px_4px_0px_0px_black] active:translate-x-1 active:translate-y-1 active:shadow-none"
                         >
-                            Install
+                            {t('installPrompt.installButton')}
                         </button>
                     )}
 
@@ -125,7 +128,7 @@ export default function InstallPrompt() {
                         onClick={handleNotNow}
                         className="px-4 py-3 font-black uppercase"
                     >
-                        Not Now
+                        {t('installPrompt.notNow')}
                     </button>
                 </div>
             </div>

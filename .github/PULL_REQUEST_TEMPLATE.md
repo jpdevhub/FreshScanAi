@@ -13,3 +13,4 @@
 - [ ] `python -m pytest` passes (including new tests I added)
 - [ ] No `.env` files, API keys, secrets, model weights, or `__pycache__` in this diff
 - [ ] Branch is rebased on `main`, not merged
+- [ ] PR description links to a GitHub issue (e.g., `Closes #123`)

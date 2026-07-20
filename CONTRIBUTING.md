@@ -110,12 +110,13 @@ chore(deps): upgrade fastapi to 0.115
 
 ## Pull Request Requirements
 
-Every PR must pass **all** of the following before a review will begin. The CI pipeline (`ci.yml`) enforces the automated checks automatically on every PR opened against `main`.
+Every PR must pass **all** of the following before a review will begin. The CI pipeline (`ci.yml` and `check-linked-issue.yml`) enforces the automated checks automatically on every PR opened against `main`.
 
 ### Automated gates (must be green)
 
 | Check | Command | Failure means |
 |-------|---------|---------------|
+| Linked issue check | Automated (CI) | PR description does not link to a GitHub issue (e.g., `Closes #123`) |
 | Frontend lint | `npm run lint` | ESLint errors in TypeScript/React code |
 | Frontend build | `npm run build` | TypeScript compile error or Vite build failure |
 | Backend lint | `ruff check . --config ruff.toml` | PEP 8 / style violations in Python code |
@@ -126,6 +127,7 @@ Do not open a PR if any of these are failing locally. Fix them first.
 ### Manual requirements (checked during review)
 
 - [ ] Branch is up to date with `main` — rebase, do not merge
+- [ ] PR description links to a GitHub issue (e.g., `Closes #123`)
 - [ ] No `.env` or `.env.local` files, credentials, secrets, or API keys are present anywhere in the diff
 - [ ] No model weight files (`.pth`, `.pt`, `.onnx`, `.bin`) are committed
 - [ ] No `__pycache__/` directories, `.pyc` files, or macOS `._*` metadata files are committed

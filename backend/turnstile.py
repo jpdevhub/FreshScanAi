@@ -38,6 +38,13 @@ async def verify_turnstile_token(
             )
             response.raise_for_status()
             data = response.json()
+    except (httpx.ConnectTimeout, httpx.ConnectError) as exc:
+        # Hugging Face Spaces has outbound network restrictions that can block
+        # connections to Cloudflare. Fail open so login still works on HF.
+        logger.warning(
+            f'Turnstile unreachable (network restriction), bypassing: {exc}'
+        )
+        return
     except Exception as exc:
         logger.error(f'Turnstile verification failed: {exc}', exc_info=True)
         raise HTTPException(

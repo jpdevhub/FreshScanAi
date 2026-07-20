@@ -2,10 +2,14 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 import "leaflet/dist/leaflet.css";
+import "react-leaflet-cluster/dist/assets/MarkerCluster.css";
+import "react-leaflet-cluster/dist/assets/MarkerCluster.Default.css";
 import GlassCard from "../components/GlassCard";
 import StatusTerminal from "../components/StatusTerminal";
 import Skeleton from "../components/Skeleton";
+import { useTranslation } from 'react-i18next';
 import { api } from "../lib/api";
 import type { Market } from "../lib/types";
 
@@ -32,9 +36,18 @@ function getScoreBg(score: number) {
   return score >= 85 ? "bg-secondary" : score >= 70 ? "bg-neon" : "bg-error";
 }
 
+interface CustomDivIcon extends L.DivIcon {
+  options: L.DivIconOptions & { score?: number };
+}
+
+interface CustomMarkerCluster {
+  getChildCount: () => number;
+  getAllChildMarkers: () => L.Marker[];
+}
+
 const createCustomIcon = (score: number) => {
   const hex = score >= 85 ? "#b5d25e" : score >= 70 ? "#c3f400" : "#ffb4ab";
-  return L.divIcon({
+  const icon = L.divIcon({
     className: "custom-leaflet-icon bg-transparent",
     html: `<div style="
       width:14px;height:14px;
@@ -46,6 +59,56 @@ const createCustomIcon = (score: number) => {
     iconSize: [20, 20],
     iconAnchor: [10, 10],
     popupAnchor: [0, -14],
+  }) as CustomDivIcon;
+  icon.options.score = score;
+  return icon;
+};
+
+const createClusterIcon = (cluster: CustomMarkerCluster) => {
+  const count = cluster.getChildCount();
+  const childMarkers = cluster.getAllChildMarkers();
+
+  let sum = 0;
+  let scoreCount = 0;
+  childMarkers.forEach((marker) => {
+    const icon = marker.getIcon() as CustomDivIcon;
+    const score = icon?.options?.score;
+    if (typeof score === "number") {
+      sum += score;
+      scoreCount++;
+    }
+  });
+
+  const avgScore = scoreCount > 0 ? Math.round(sum / scoreCount) : 0;
+  const hex = avgScore >= 85 ? "#b5d25e" : avgScore >= 70 ? "#c3f400" : "#ffb4ab";
+
+  let size = 36;
+  if (count > 50) size = 44;
+  if (count > 200) size = 52;
+
+  return L.divIcon({
+    className: "custom-leaflet-cluster bg-transparent",
+    html: `<div style="
+      width: ${size}px;
+      height: ${size}px;
+      background-color: var(--glass-bg);
+      border: 2px solid ${hex};
+      border-radius: 50%;
+      color: ${hex};
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: monospace;
+      font-weight: bold;
+      font-size: ${size > 44 ? "0.85rem" : "0.75rem"};
+      box-shadow: 0 0 15px ${hex}60, inset 0 0 10px ${hex}30;
+      backdrop-filter: blur(4px);
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    " onmouseenter="this.style.transform='scale(1.1)'" onmouseleave="this.style.transform='scale(1)'">
+      ${count}
+    </div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
   });
 };
 
@@ -58,10 +121,12 @@ function RecenterMap({ center }: { center: [number, number] }) {
 }
 
 export default function MarketMapPage() {
-  const [markers, setMarkers] = useState<Market[]>([]);
+  const { t } = useTranslation();
+
+      const [markers, setMarkers] = useState<Market[]>([]);
   const [selected, setSelected] = useState<Market | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [errorKey, setErrorKey] = useState("");
   const [tileUrl, setTileUrl] = useState(getActiveTile);
   const [mapCenter, setMapCenter] = useState<[number, number]>([22.5726, 88.3639]);
   const [regionName, setRegionName] = useState("KOLKATA");
@@ -83,7 +148,12 @@ export default function MarketMapPage() {
         const res = await api.getLiveMarkets(lat, lng);
         setMarkers(res.markets || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load live market data.");
+        // Handle translatable error keys from the API, with a specific fallback for this page.
+        if (err instanceof Error && err.message.startsWith('error.')) {
+          setErrorKey(err.message);
+        } else {
+          setErrorKey('marketMap.failedLoadMarketData');
+        }
         console.error("Live market fetch error:", err);
       } finally {
         setLoading(false);
@@ -102,16 +172,16 @@ export default function MarketMapPage() {
         (err) => {
           console.warn("Geolocation denied or failed, falling back to mock data.", err);
           api.getMarkets()
-            .then(res => setMarkers(res.markets))
-            .catch(() => setError("Failed to load markets."))
+            .then(res => setMarkers(res.markets || []))
+            .catch(() => setErrorKey('marketMap.failedLoadMarkets'))
             .finally(() => setLoading(false));
         },
         { timeout: 10000, enableHighAccuracy: false }
       );
     } else {
       api.getMarkets()
-        .then(res => setMarkers(res.markets))
-        .catch(() => setError("Failed to load markets."))
+        .then(res => setMarkers(res.markets || []))
+        .catch(() => setErrorKey('marketMap.failedLoadMarkets'))
         .finally(() => setLoading(false));
     }
   }, []);
@@ -122,25 +192,21 @@ export default function MarketMapPage() {
       <div className="px-6 md:px-16 py-6 bg-surface-low z-20 shadow-md">
         <StatusTerminal
           messages={[
-            "TRUST_MAP",
-            `REGION: ${regionName}`,
-            loading
-              ? "SYNCING_DB..."
-              : error
-                ? "LOAD_ERROR"
-                : `NODES: ${markers.length}`,
+            t('marketMap.trustMapTerminal'),
+            `${t('marketMap.regionPrefix')}${regionName}`,
+            loading ? t('marketMap.syncingDb') : errorKey ? t('marketMap.loadError') : `${t('marketMap.nodesPrefix')}${markers.length}`,
           ]}
           className="mb-3"
         />
         <div className="flex items-end justify-between gap-4">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-display">
-            Market Trust <span className="text-neon">Map</span>
+            {t('marketMap.marketTrustTitle')} <span className="text-neon">{t('marketMap.mapTitle')}</span>
           </h1>
           <Link
             to="/leaderboard"
             className="text-[0.65rem] sm:text-xs font-mono tracking-widest text-on-surface hover:text-neon flex items-center border border-outline-variant/30 px-2 py-1 sm:px-3 sm:py-1.5 bg-surface-lowest transition-colors no-underline whitespace-nowrap"
           >
-            LEADERBOARD
+            {t('marketMap.leaderboardLink')}
           </Link>
         </div>
       </div>
@@ -155,43 +221,44 @@ export default function MarketMapPage() {
         >
           <RecenterMap center={mapCenter} />
           <TileLayer url={tileUrl} attribution="&copy; CARTO" />
-          {markers.map((m) => (
-            <Marker
-              key={m.id}
-              position={[m.lat, m.lng]}
-              icon={createCustomIcon(m.score)}
-              eventHandlers={{ click: () => setSelected(m) }}
-            >
-              <Popup className="brutalist-popup" closeButton={false}>
-                <div className="p-2 font-mono">
-                  <div className="text-[0.65rem] font-bold text-[#e2e2e2] uppercase mb-1">
-                    {m.name}
+          <MarkerClusterGroup
+            chunkedLoading
+            iconCreateFunction={createClusterIcon}
+            showCoverageOnHover={false}
+          >
+            {markers.map((m) => (
+              <Marker
+                key={m.id}
+                position={[m.lat, m.lng]}
+                icon={createCustomIcon(m.score)}
+                eventHandlers={{ click: () => setSelected(m) }}
+              >
+                <Popup className="brutalist-popup" closeButton={false}>
+                  <div className="p-2 font-mono">
+                    <div className="text-[0.65rem] font-bold text-[#e2e2e2] uppercase mb-1">
+                      {m.name}
+                    </div>
+                    <div
+                      className="text-[0.55rem] tracking-widest"
+                      style={{
+                        color: m.score >= 85 ? "#b5d25e" : m.score >= 70 ? "#c3f400" : "#ffb4ab",
+                      }}
+                    >
+                      {t('marketMap.scorePrefix')}{m.score} | {t('marketMap.vendorsPrefix')}{m.vendors}
+                    </div>
                   </div>
-                  <div
-                    className="text-[0.55rem] tracking-widest"
-                    style={{
-                      color:
-                        m.score >= 85
-                          ? "#b5d25e"
-                          : m.score >= 70
-                            ? "#c3f400"
-                            : "#ffb4ab",
-                    }}
-                  >
-                    SCORE: {m.score} | VENDORS: {m.vendors}
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+                </Popup>
+              </Marker>
+            ))}
+          </MarkerClusterGroup>
         </MapContainer>
       </div>
 
       {/* Bottom panel */}
       <div className="bg-surface-low px-6 md:px-16 py-6 z-20">
-        {error && (
+        {errorKey && (
           <p className="text-error font-mono text-xs tracking-widest text-center mb-4">
-            {error}
+            {t(errorKey)}
           </p>
         )}
 
@@ -221,7 +288,7 @@ export default function MarketMapPage() {
                   {selected.name}
                 </h3>
                 <span className="font-mono text-[0.5625rem] tracking-widest text-on-surface-variant">
-                  {selected.vendors} VENDORS
+                  {selected.vendors} {t('marketMap.vendorsLabel')}
                 </span>
               </div>
               <div className="text-right">
@@ -230,9 +297,7 @@ export default function MarketMapPage() {
                 >
                   {selected.score}
                 </span>
-                <span className="block font-mono text-[0.5rem] tracking-widest text-on-surface-variant">
-                  AVG_FRESHNESS
-                </span>
+                <span className="block font-mono text-[0.5rem] tracking-widest text-on-surface-variant">{t('marketMap.avgFreshness')}</span>
               </div>
             </div>
             <div className="h-1.5 bg-surface-highest">
@@ -246,22 +311,20 @@ export default function MarketMapPage() {
           /* IDLE/EMPTY STATE */
           <div className="text-center py-4">
             <span className="font-mono text-[0.6875rem] tracking-widest text-on-surface-variant">
-              SELECT_MARKET_NODE
+              {t('marketMap.selectMarketNode')}
             </span>
           </div>
         )}
 
         <div className="flex items-center justify-center gap-6 mt-4">
           {[
-            { l: "HIGH (85+)", c: "bg-secondary" },
-            { l: "MED (70-84)", c: "bg-neon" },
-            { l: "LOW (<70)", c: "bg-error" },
+            { l: t('marketMap.highTrust'), c: "bg-secondary" },
+            { l: t('marketMap.mediumTrust'), c: "bg-neon" },
+            { l: t('marketMap.lowTrust'), c: "bg-error" },
           ].map((x) => (
             <div key={x.l} className="flex items-center gap-2">
-              <div className={`w-3 h-3 ${x.c}`} />
-              <span className="font-mono text-[0.5rem] tracking-widest text-on-surface-variant">
-                {x.l}
-              </span>
+              <div className={`w-6 h-3 ${x.c} rounded-sm`} />
+              <div className="text-[0.7rem] tracking-widest font-mono">{x.l}</div>
             </div>
           ))}
         </div>

@@ -16,6 +16,7 @@ import PostHogPageView from './components/PostHogPageView';
 import NotFound from './pages/NotFound';
 import InstallPrompt from './components/InstallPrompt';
 import PublicReport from "./pages/PublicReport";
+import AnalyticsPage from "./pages/AnalyticsPage";
 
 export default function App() {
   const [runTour, setRunTour] = useState(false);
@@ -48,6 +49,7 @@ useEffect(() => {
           <Route path="/analysis" element={<AnalysisDashboard />} />
           <Route path="/map" element={<MarketMapPage />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/faq" element={<FAQPage />} />
 

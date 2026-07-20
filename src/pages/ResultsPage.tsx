@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import StatusTerminal from '../components/StatusTerminal';
 import { api } from '../lib/api';
 import type { HistoryScan, HistoryStats } from '../lib/types';
 
 export default function ResultsPage() {
+  const { t } = useTranslation();
   const [scans, setScans] = useState<HistoryScan[]>([]);
   const [stats, setStats] = useState<HistoryStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [errorKey, setErrorKey] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -20,7 +23,12 @@ export default function ResultsPage() {
         setScans(res.scans);
         setStats(res.stats);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load history.');
+        if (err instanceof Error && err.message.startsWith('error.')) {
+          setErrorKey(err.message);
+        } else {
+          setErrorKey('results.failedToLoadHistory');
+        }
+        console.error('History fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -31,24 +39,32 @@ export default function ResultsPage() {
   if (loading) {
     return (
       <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
-        <StatusTerminal messages={['LOADING_HISTORY...', 'QUERYING_DB']} />
+        <StatusTerminal messages={[t('results.loadingHistory'), t('results.queryingDb')]} />
       </div>
     );
   }
 
-  if (error) {
+  if (errorKey) {
+    const isAuthError = errorKey.includes('auth');
     return (
       <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center gap-4 px-6">
-        <StatusTerminal messages={['HISTORY_LOAD_FAILED']} />
+        <StatusTerminal messages={[t('results.historyLoadFailed')]} />
         <p className="text-error font-[family-name:var(--font-mono)] text-xs tracking-widest">
-          {error}
+          {t(errorKey)}
         </p>
-        <Link
-          to="/auth"
-          className="text-neon font-[family-name:var(--font-mono)] text-xs tracking-widest no-underline hover:underline"
-        >
-          SIGN_IN_REQUIRED
-        </Link>
+        {isAuthError ? (
+          <Link
+            to="/auth"
+            className="text-neon font-[family-name:var(--font-mono)] text-xs tracking-widest no-underline hover:underline"
+          >
+            {t('results.signInRequired')}
+          </Link>
+        ) : (
+          <button
+            onClick={() => window.location.reload()}
+            className="text-neon font-[family-name:var(--font-mono)] text-xs tracking-widest no-underline hover:underline bg-transparent border-none cursor-pointer"
+          >{t('common.tryAgain')}</button>
+        )}
       </div>
     );
   }
@@ -62,21 +78,21 @@ export default function ResultsPage() {
       <div className="max-w-4xl mx-auto">
         <StatusTerminal
           messages={[
-            'SCAN_HISTORY',
-            `TOTAL: ${totalScans}`,
-            `AVG_SCORE: ${avgScore}`,
+            t('results.scanHistoryTerminal'),
+            `${t('results.totalPrefix')}${totalScans}`,
+            `${t('results.avgScorePrefix')}${avgScore}`,
           ]}
           className="mb-6"
         />
         <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-8 font-[family-name:var(--font-display)]">
-          Scan <span className="text-neon">Results</span>
+          {t('results.scanTitle')}<span className="text-neon">{t('results.resultsTitle')}</span>
         </h1>
 
         {/* Summary stats */}
         <div className="grid grid-cols-3 gap-3 mb-10">
           <GlassCard className="p-4 text-center" variant="tonal">
             <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant block mb-1">
-              TOTAL_SCANS
+              {t('results.totalScans')}
             </span>
             <span className="font-[family-name:var(--font-display)] text-2xl font-bold text-neon">
               {totalScans}
@@ -84,7 +100,7 @@ export default function ResultsPage() {
           </GlassCard>
           <GlassCard className="p-4 text-center" variant="tonal">
             <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant block mb-1">
-              AVG_FRESHNESS
+              {t('results.avgFreshness')}
             </span>
             <span className="font-[family-name:var(--font-display)] text-2xl font-bold text-neon">
               {avgScore}
@@ -92,7 +108,7 @@ export default function ResultsPage() {
           </GlassCard>
           <GlassCard className="p-4 text-center" variant="tonal">
             <span className="font-[family-name:var(--font-mono)] text-[0.5625rem] tracking-widest text-on-surface-variant block mb-1">
-              FRESH_RATE
+              {t('results.freshRate')}
             </span>
             <span className="font-[family-name:var(--font-display)] text-2xl font-bold text-secondary">
               {freshRate}%
@@ -100,15 +116,26 @@ export default function ResultsPage() {
           </GlassCard>
         </div>
 
+        {/* Analytics link */}
+        {totalScans > 0 && (
+          <Link
+            to="/analytics"
+            className="flex items-center justify-center gap-2 bg-surface-mid text-on-surface py-3 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider no-underline text-center transition-all duration-200 hover:bg-surface-high ghost-border mb-10"
+          >
+            <BarChart3 size={16} />
+            View Analytics Dashboard
+          </Link>
+        )}
+
         {/* History list */}
         {scans.length === 0 ? (
           <div className="text-center py-16">
-            <StatusTerminal messages={['NO_SCANS_FOUND', 'RUN_FIRST_SCAN']} className="justify-center mb-4" />
+            <StatusTerminal messages={[t('results.noScansFound'), t('results.runFirstScan')]} className="justify-center mb-4" />
             <Link
               to="/scanner"
               className="bg-neon text-on-primary px-8 py-4 font-[family-name:var(--font-display)] font-bold text-sm tracking-wider no-underline hover:bg-neon-dim transition-colors inline-block"
             >
-              INITIATE_FIRST_SCAN
+              {t('results.initiateFirstScan')}
             </Link>
           </div>
         ) : (
