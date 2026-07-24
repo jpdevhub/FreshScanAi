@@ -83,8 +83,6 @@ export default function LandingPage() {
           {/* Stat Pills */}
           <div className="flex flex-wrap justify-center gap-4 mb-12">
             <GlassCard className="px-6 py-4" variant="glass">
-             <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-white">
-               Biomarker Acuuracy
               <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-on-surface-variant uppercase block mb-1">
                 {t('landing.inferenceSpeed')}
               </span>
@@ -93,12 +91,6 @@ export default function LandingPage() {
               </span>
             </GlassCard>
             <GlassCard className="px-6 py-4" variant="glass">
-             <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-white">
-              Biomarker Accuracy
-             </span>
-             <span className="font-[family-name:var(--font-display)] text-3xl font-bold text-neon">
-              98.9%
-             </span>
               <span className="font-[family-name:var(--font-mono)] text-[0.625rem] tracking-widest text-on-surface-variant uppercase block mb-1">
                 {t('landing.biomarkerAccuracy')}
               </span>
