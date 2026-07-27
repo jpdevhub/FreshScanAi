@@ -10,7 +10,7 @@ pytest>=8.0.0
 # ── ML / Inference (optional — server starts without them in demo mode) ───────
 # Comment these out if you don't have GPU/model files and just want demo mode.
 torch>=2.2.0
-torchvision>=0.27.0
+torchvision>=0.17.0,<0.18.0
 slowapi==0.1.9  # rate limiting for FastAPI; added for per-user scan endpoint throttling
 
 fastapi-cache2==0.2.2

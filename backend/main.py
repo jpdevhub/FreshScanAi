@@ -37,10 +37,12 @@ from PIL import Image
 try:
     from inference import load_models, predict_stream_a, predict_stream_b
     from fusion import process_and_fuse
+    from species import load_species_model, predict_species, SPECIES_METADATA
 
     _torch_available = True
 except ModuleNotFoundError:
     _torch_available = False
+    SPECIES_METADATA = {}
     print("WARNING: PyTorch not installed. Scan endpoints will return 503.")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -58,6 +60,7 @@ _repo_root = Path(__file__).parent.parent
 MODEL_DIR = Path(os.environ.get("MODEL_DIR", str(_repo_root / "Models")))
 STREAM_A_PATH = os.environ.get("STREAM_A_MODEL", str(MODEL_DIR / "freshscan_stream_a_body.pth"))
 STREAM_B_PATH = os.environ.get("STREAM_B_MODEL", str(MODEL_DIR / "stream_b_checkpoint.pth"))
+SPECIES_MODEL_PATH = os.environ.get("SPECIES_MODEL", str(MODEL_DIR / "species_mobilenetv3.pth"))
 
 
 # ── Supabase clients ──────────────────────────────────────────────────────────
@@ -86,18 +89,22 @@ async def lifespan(app: FastAPI):
     global _models_loaded
     a = Path(STREAM_A_PATH)
     b = Path(STREAM_B_PATH)
+    sp = Path(SPECIES_MODEL_PATH)
     if not _torch_available:
         print("WARNING: PyTorch not installed. Scan endpoints will return 503.")
-    elif a.exists() and b.exists():
-        print(f"Loading models from {MODEL_DIR} ...")
-        load_models(str(a), str(b))
-        _models_loaded = True
-        print("Models loaded successfully.")
     else:
-        print(
-            f"WARNING: Model files not found at {MODEL_DIR}. "
-            "Scan endpoints will return 503 until models are present."
-        )
+        if a.exists() and b.exists():
+            print(f"Loading models from {MODEL_DIR} ...")
+            load_models(str(a), str(b))
+            _models_loaded = True
+            print("Models loaded successfully.")
+        else:
+            print(
+                f"WARNING: Model files not found at {MODEL_DIR}. "
+                "Scan endpoints will return 503 until models are present."
+            )
+        # Load species classifier (optional — falls back to default if missing)
+        load_species_model(str(sp))
     FastAPICache.init(InMemoryBackend(), prefix="freshscanai-cache")
     yield
 
@@ -231,6 +238,7 @@ def _build_scan_payload(
     scan_id: str,
     display_id: str,
     photo_url: Optional[str] = None,
+    species_info: Optional[dict] = None,
 ) -> dict:
     score = fusion["final_score_percent"]
     reg = fusion["regional_breakdown"]
@@ -253,6 +261,14 @@ def _build_scan_payload(
 
     consume_hours = max(0, int((freshness - 40) * 0.6)) if is_fresh else 0
 
+    # Use detected species or fallback to default
+    if species_info is None:
+        species_info = {}
+
+    species_name = species_info.get("common_name", "Rohu Carp")
+    scientific_name = species_info.get("scientific_name", "Labeo rohita")
+    habitat = species_info.get("habitat", "Freshwater")
+
     return {
         "scan_id": scan_id,
         "scan_display_id": display_id,
@@ -263,10 +279,10 @@ def _build_scan_payload(
         "is_fresh": is_fresh,
         "uncertain_flag": fusion["uncertain_prediction_flag"],
         "species": {
-            "common_name": "Rohu Carp",
-            "scientific_name": "Labeo rohita",
-            "habitat": "Freshwater",
-            "tags": ["ROHU CARP", "LABEO ROHITA", "FRESHWATER"],
+            "common_name": species_name,
+            "scientific_name": scientific_name,
+            "habitat": habitat,
+            "tags": [species_name.upper(), scientific_name.upper(), habitat.upper()],
             "weight_estimate_kg": 1.2,
             "catch_age_hours": 6,
         },
@@ -291,6 +307,11 @@ def _row_to_payload(row: dict) -> dict:
     if not bm:
         bm = _build_biomarkers(freshness, freshness, freshness)
 
+    # Use species_detected from DB or fallback
+    species_name = row.get("species_detected") or "Rohu Carp"
+    default_meta = {"scientific_name": "Labeo rohita", "habitat": "Freshwater"}
+    metadata = SPECIES_METADATA.get(species_name, default_meta)
+
     return {
         "scan_id": row["id"],
         "scan_display_id": row.get("scan_display_id") or row["id"][:8].upper(),
@@ -301,10 +322,14 @@ def _row_to_payload(row: dict) -> dict:
         "is_fresh": is_fresh,
         "uncertain_flag": False,
         "species": {
-            "common_name": "Rohu Carp",
-            "scientific_name": "Labeo rohita",
-            "habitat": "Freshwater",
-            "tags": ["ROHU CARP", "LABEO ROHITA", "FRESHWATER"],
+            "common_name": species_name,
+            "scientific_name": metadata["scientific_name"],
+            "habitat": metadata["habitat"],
+            "tags": [
+                species_name.upper(),
+                metadata["scientific_name"].upper(),
+                metadata["habitat"].upper(),
+            ],
             "weight_estimate_kg": 1.2,
             "catch_age_hours": 6,
         },
@@ -497,7 +522,17 @@ async def process_scan(
         predict_stream_b(img_gill),
         temperature=1.5,
     )
-    payload = _build_scan_payload(fusion, scan_id, display_id)
+
+    # Classify species from the body image
+    species_info = predict_species(img_body)
+    species_label = (
+        "unclassified"
+        if species_info["confidence"] == 0
+        else species_info["common_name"]
+    )
+    payload = _build_scan_payload(
+        fusion, scan_id, display_id, species_info=species_info
+    )
 
     try:
         _db().table("scans").insert(
@@ -510,7 +545,7 @@ async def process_scan(
                 "image_type": "full_scan",
                 "freshness_index": payload["freshness_index"],
                 "scan_display_id": display_id,
-                "species_detected": "Rohu Carp",
+                "species_detected": species_label,
                 "biomarker_json": payload["biomarkers"],
                 "storage_hours": payload["recommendations"]["consume_within_hours"],
                 "alert_flags": payload["recommendations"]["alert_flags"],
@@ -553,7 +588,18 @@ async def scan_auto(
             },
         }
         photo_url = await _upload_image(image_bytes, str(current_user.id), scan_id)
-        payload = _build_scan_payload(demo_fusion, scan_id, display_id, photo_url)
+        species_info = {
+            "common_name": "Rohu Carp",
+            "scientific_name": "Labeo rohita",
+            "habitat": "Freshwater",
+        }
+        payload = _build_scan_payload(
+            demo_fusion,
+            scan_id,
+            display_id,
+            photo_url,
+            species_info=species_info,
+        )
 
         try:
             _db().table("scans").insert(
@@ -615,7 +661,17 @@ async def scan_auto(
 
     fusion = process_and_fuse(body_logits, eye_logits, gill_logits, temperature=1.5)
     photo_url = await _upload_image(image_bytes, str(current_user.id), scan_id)
-    payload = _build_scan_payload(fusion, scan_id, display_id, photo_url)
+
+    # Classify species from the uploaded image
+    species_info = predict_species(img)
+    species_label = (
+        "unclassified"
+        if species_info["confidence"] == 0
+        else species_info["common_name"]
+    )
+    payload = _build_scan_payload(
+        fusion, scan_id, display_id, photo_url, species_info=species_info
+    )
 
     try:
         _db().table("scans").insert(
@@ -627,7 +683,7 @@ async def scan_auto(
                 "image_type": image_type.value,
                 "freshness_index": payload["freshness_index"],
                 "scan_display_id": display_id,
-                "species_detected": "Rohu Carp",
+                "species_detected": species_label,
                 "biomarker_json": payload["biomarkers"],
                 "storage_hours": payload["recommendations"]["consume_within_hours"],
                 "alert_flags": payload["recommendations"]["alert_flags"],
