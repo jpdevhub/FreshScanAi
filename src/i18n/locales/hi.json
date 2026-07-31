@@ -108,7 +108,12 @@
     "notFishDetected": "मछली नहीं: कोई मछली नहीं मिली। कृपया एक मछली की तस्वीर अपलोड करें।",
     "inferenceFailed": "अनुमान विफल।",
     "capturedAlt": "कैप्चर किया गया",
-    "rejectedUploadAlt": "अपलोड अस्वीकार किया गया"
+    "rejectedUploadAlt": "अपलोड अस्वीकार किया गया",
+    "syncingScans": "पृष्ठभूमि में ऑफ़लाइन स्कैन सिंक किए जा रहे हैं...",
+    "syncSuccess": "ऑफ़लाइन स्कैन सफलतापूर्वक सिंक किए गए!",
+    "savedOffline": "ऑफ़लाइन मोड में स्थानीय रूप से स्कैन सहेजा गया",
+    "pendingSyncScans": "ऑफ़लाइन स्कैन सिंक होना बाकी है",
+    "syncNowButton": "अभी सिंक करें"
   },
   "dashboard": {
     "loadingAnalysis": "विश्लेषण लोड हो रहा है...",
@@ -144,7 +149,11 @@
     "storageTemp": "भंडारण तापमान",
     "alertLabel": "सतर्कता",
     "newScanButton": "नया स्कैन",
-    "viewHistoryButton": "इतिहास देखें"
+    "viewHistoryButton": "इतिहास देखें",
+    "uncertainWarningTitle": "एआई भविष्यवाणी अनिश्चित",
+    "uncertainWarningDesc": "मॉडल ने इनपुट गुणवत्ता में उच्च भिन्नता का पता लगाया (जैसे प्रकाश छाया या बंद कोण)। ताजगी सूचकांक सामान्य से कम विश्वसनीय हो सकता है।",
+    "suggestRescan": "→ नमूने को फिर से स्कैन करने का सुझाव दें",
+    "uncertaintyMargin": "त्रुटि मार्जिन:"
   },
   "auth": {
     "authInitiated": "प्रमाणीकरण शुरू किया गया",
