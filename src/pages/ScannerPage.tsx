@@ -14,6 +14,8 @@ import StatusTerminal from "../components/StatusTerminal";
 import CameraOverlay from "../components/CameraOverlay";
 import { api, isAuthenticated } from "../lib/api";
 import { FishFreshnessInference } from "../fusionInference.js";
+import { offlineDb } from "../lib/offlineDb";
+import toast from "react-hot-toast";
 import type { ScanResult } from "../lib/types";
 
 
@@ -264,7 +266,7 @@ export default function ScannerPage() {
           label: fusion.label,
           freshness,
           grade: deriveGrade(freshness),
-          confidence: fusion.confidence,
+          confidence: `${Math.round((fusion.confidence ?? 0.9) * 100)}%`,
         });
         setScanPhase("done");
 
