@@ -207,7 +207,15 @@ def test_classify_top3_names_are_distinct(module):
 
 def test_top3_confidences_sum_to_near_one(module):
     """The top-3 softmax outputs should sum to <= 1.0 (10-class softmax).
-    This guards against accidentally returning raw logits."""
+    This guards against accidentally returning raw logits.
+
+    Tolerance is 1e-3 (not 1e-6) because `_format_top3` rounds each
+    confidence to 4 decimals before summing — three independent
+    roundings can drift the total by up to ~3e-4. The 1e-3 cushion
+    safely absorbs that while still catching raw-logit regressions by
+    3+ orders of magnitude (raw-logit top3 on a 10-class softmax would
+    overshoot 1.0 by orders more). See CodeRabbit review on PR #182.
+    """
     if not module.is_available():
         pytest.skip("species model not available")
     img = _fresh_rgb_image()
@@ -215,7 +223,7 @@ def test_top3_confidences_sum_to_near_one(module):
     if result is None:
         pytest.skip("model returned None")
     total = sum(e["confidence"] for e in result["top3"])
-    assert 0.0 < total <= 1.0 + 1e-6
+    assert 0.0 < total <= 1.0 + 1e-3
 
 
 def test_resolve_model_path_priority(module, monkeypatch):

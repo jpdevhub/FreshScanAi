@@ -27,6 +27,14 @@ try:
     from PIL import Image  # type: ignore
 
     _TORCH_AVAILABLE = True
+    # CPU-only inference config — MobileNetV3-Small is small enough that a
+    # single thread is sufficient and avoids oversubscribing the worker
+    # process. Done here (NOT at module top) so it only runs when torch
+    # actually imported successfully; otherwise `set_num_threads` would
+    # raise `NameError` on hosts without torch installed (CodeRabbit
+    # review on PR #182).
+    torch.set_num_threads(1)
+    torch.set_grad_enabled(False)
 except ModuleNotFoundError:  # pragma: no cover — exercised only on hosts w/o torch
     _TORCH_AVAILABLE = False
     torch = None  # type: ignore
@@ -132,23 +140,21 @@ def _load_model(model_path: Path) -> None:
         _model = None
         return
     try:
+        # Always load onto CPU then `.to(_device)` after load_state_dict;
+        # `map_location="cpu"` is unambiguous and avoids CUDA OOM at load
+        # time when the checkpoint was saved from a different device. We
+        # intentionally use `weights_only=True` only (no False fallback) so
+        # we never blindly unpickle an untrusted checkpoint — if the .pth
+        # bundled extra state that `weights_only=True` rejects we surface
+        # the error and return `species: null` rather than silencing it
+        # (CodeRabbit review on PR #182).
         _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = _build_mobilenetv3_small()
-        # `weights_only=True` matches `inference.py`'s Stream A loader, but we
-        # fall back to False so we don't reject checkpoints that bundled extra
-        # optimizer state from the training run.
-        try:
-            state_dict = torch.load(
-                str(model_path),
-                map_location=_device,
-                weights_only=True,
-            )
-        except Exception:
-            state_dict = torch.load(
-                str(model_path),
-                map_location=_device,
-                weights_only=False,
-            )
+        state_dict = torch.load(
+            str(model_path),
+            map_location="cpu",
+            weights_only=True,
+        )
         # Strip an optional `module.` DDP prefix if the checkpoint was saved
         # from a DistributedDataParallel wrapper — harmless otherwise.
         cleaned: dict = {}

@@ -297,8 +297,12 @@ def _build_scan_payload(
     # when a prediction is present, but `name/confidence/top3` are the
     # canonical fields per the acceptance criteria.
     if species_prediction is not None:
+        # `common_name` mirrors `name` for backward-compat with older
+        # clients that keyed off `species.common_name` instead of
+        # `species.name` (CodeRabbit review on PR #182).
         species_payload: Optional[dict] = {
             "name": species_prediction["name"],
+            "common_name": species_prediction["name"],
             "confidence": species_prediction["confidence"],
             "top3": species_prediction["top3"],
             # Back-compat metadata (kept for older clients).
@@ -358,8 +362,11 @@ def _row_to_payload(row: dict) -> dict:
         # emit a minimal `species` block from the stored `species_detected`
         # column at least carries the species name. We DON'T invent
         # confidence/top3 because the classifier never ran on those rows.
+        # `common_name` mirrors `name` for back-compat with older clients
+        # (CodeRabbit review on PR #182).
         "species": {
             "name": row.get("species_detected") or "Rohu Carp",
+            "common_name": row.get("species_detected") or "Rohu Carp",
             "scientific_name": _SCIENTIFIC_NAMES.get(
                 row.get("species_detected") or "Rohu Carp", "Labeo rohita"
             ),
