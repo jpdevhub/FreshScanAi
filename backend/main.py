@@ -43,6 +43,10 @@ except ModuleNotFoundError:
     _torch_available = False
     print("WARNING: PyTorch not installed. Scan endpoints will return 503.")
 
+# Species classifier (issue #172) — degrades to None when the model is
+# missing or torch isn't installed; module-level singleton per the issue.
+from species_classifier import classify_species as _classify_species
+
 # ── Configuration ─────────────────────────────────────────────────────────────
 # All secrets MUST come from environment variables — no hardcoded fallbacks.
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
@@ -79,6 +83,37 @@ def _db() -> Client:
 
 # ── App lifespan ──────────────────────────────────────────────────────────────
 _models_loaded = False
+
+# Metadata lookup tables for the species classifier (issue #172). The
+# trained MobileNetV3-Small model emits one of 10 species class names; we
+# supplement the classifier output with `scientific_name` and `habitat` so
+# older clients who relied on the previous placeholder `species` shape
+# keep working. Source: FreshScanAi species taxonomy docs.
+_SCIENTIFIC_NAMES: dict[str, str] = {
+    "Rohu Carp": "Labeo rohita",
+    "Catla Carp": "Catla catla",
+    "Mrigal Carp": "Cirrhinus mrigala",
+    "Pangas": "Pangasianodon hypophthalmus",
+    "Basa": "Pangasius bocourti",
+    "Tilapia": "Oreochromis niloticus",
+    "Pomfret": "Pampus argenteus",
+    "Kingfish": "Scomberomorus cavalla",
+    "Mackerel": "Rastrelliger kanagurta",
+    "Sardine": "Sardinella longiceps",
+}
+
+_HABITATS: dict[str, str] = {
+    "Rohu Carp": "Freshwater",
+    "Catla Carp": "Freshwater",
+    "Mrigal Carp": "Freshwater",
+    "Pangas": "Freshwater",
+    "Basa": "Freshwater",
+    "Tilapia": "Freshwater / Brackish",
+    "Pomfret": "Marine",
+    "Kingfish": "Marine",
+    "Mackerel": "Marine",
+    "Sardine": "Marine",
+}
 
 
 @asynccontextmanager
@@ -231,6 +266,7 @@ def _build_scan_payload(
     scan_id: str,
     display_id: str,
     photo_url: Optional[str] = None,
+    species_prediction: Optional[dict] = None,
 ) -> dict:
     score = fusion["final_score_percent"]
     reg = fusion["regional_breakdown"]
@@ -253,6 +289,35 @@ def _build_scan_payload(
 
     consume_hours = max(0, int((freshness - 40) * 0.6)) if is_fresh else 0
 
+    # Issue #172 — replace the hardcoded `species` placeholder with the
+    # classifier output. The new shape is `species: {name, confidence, top3}`
+    # (or `null` if the model is unavailable so the scan still succeeds).
+    # Backward-compat note: previous clients may expect `species.common_name`
+    # / `species.scientific_name`. We retain those as best-effort metadata
+    # when a prediction is present, but `name/confidence/top3` are the
+    # canonical fields per the acceptance criteria.
+    if species_prediction is not None:
+        # `common_name` mirrors `name` for backward-compat with older
+        # clients that keyed off `species.common_name` instead of
+        # `species.name` (CodeRabbit review on PR #182).
+        species_payload: Optional[dict] = {
+            "name": species_prediction["name"],
+            "common_name": species_prediction["name"],
+            "confidence": species_prediction["confidence"],
+            "top3": species_prediction["top3"],
+            # Back-compat metadata (kept for older clients).
+            "scientific_name": _SCIENTIFIC_NAMES.get(
+                species_prediction["name"], species_prediction["name"]
+            ),
+            "habitat": _HABITATS.get(species_prediction["name"], "Unknown"),
+        }
+    else:
+        # Model unavailable — emit `null` per the issue's "If species model
+        # fails for any reason, the scan still succeeds (species is null)"
+        # acceptance criterion. We DO NOT emit the stale placeholder because
+        # that would mislead consumers about which fish was detected.
+        species_payload = None
+
     return {
         "scan_id": scan_id,
         "scan_display_id": display_id,
@@ -262,14 +327,7 @@ def _build_scan_payload(
         "classification": "FRESH" if is_fresh else "SPOILED",
         "is_fresh": is_fresh,
         "uncertain_flag": fusion["uncertain_prediction_flag"],
-        "species": {
-            "common_name": "Rohu Carp",
-            "scientific_name": "Labeo rohita",
-            "habitat": "Freshwater",
-            "tags": ["ROHU CARP", "LABEO ROHITA", "FRESHWATER"],
-            "weight_estimate_kg": 1.2,
-            "catch_age_hours": 6,
-        },
+        "species": species_payload,
         "biomarkers": _build_biomarkers(gill_score, eye_score, body_score),
         "recommendations": {
             "consume_within_hours": consume_hours,
@@ -300,13 +358,21 @@ def _row_to_payload(row: dict) -> dict:
         "classification": "FRESH" if is_fresh else "SPOILED",
         "is_fresh": is_fresh,
         "uncertain_flag": False,
+        # Issue #172: for rows written before species classification, we
+        # emit a minimal `species` block from the stored `species_detected`
+        # column at least carries the species name. We DON'T invent
+        # confidence/top3 because the classifier never ran on those rows.
+        # `common_name` mirrors `name` for back-compat with older clients
+        # (CodeRabbit review on PR #182).
         "species": {
-            "common_name": "Rohu Carp",
-            "scientific_name": "Labeo rohita",
-            "habitat": "Freshwater",
-            "tags": ["ROHU CARP", "LABEO ROHITA", "FRESHWATER"],
-            "weight_estimate_kg": 1.2,
-            "catch_age_hours": 6,
+            "name": row.get("species_detected") or "Rohu Carp",
+            "common_name": row.get("species_detected") or "Rohu Carp",
+            "scientific_name": _SCIENTIFIC_NAMES.get(
+                row.get("species_detected") or "Rohu Carp", "Labeo rohita"
+            ),
+            "habitat": _HABITATS.get(
+                row.get("species_detected") or "Rohu Carp", "Freshwater"
+            ),
         },
         "biomarkers": bm,
         "recommendations": {
@@ -461,7 +527,19 @@ async def process_scan(
                 "body_freshness_score": body / 100,
             },
         }
-        payload = _build_scan_payload(demo_fusion, scan_id, display_id)
+        # Issue #172: still try species classification — the species model
+        # is a separate MobileNetV3-Small checkpoint that may be available
+        # even when the freshness (Stream A/B) models aren't. If both are
+        # unavailable, classify_species returns None and species=None.
+        # The body upload is enough signal even without the freshness stack.
+        try:
+            img_body_demo = _read_image(body_image)
+        except Exception:
+            img_body_demo = None
+        species_pred = _classify_species(img_body_demo) if img_body_demo is not None else None
+        payload = _build_scan_payload(
+            demo_fusion, scan_id, display_id, species_prediction=species_pred
+        )
 
         try:
             _db().table("scans").insert(
@@ -474,7 +552,7 @@ async def process_scan(
                     "image_type": "full_scan",
                     "freshness_index": payload["freshness_index"],
                     "scan_display_id": display_id,
-                    "species_detected": "Rohu Carp",
+                    "species_detected": species_pred["name"] if species_pred else "Rohu Carp",
                     "biomarker_json": payload["biomarkers"],
                     "storage_hours": payload["recommendations"]["consume_within_hours"],
                     "alert_flags": payload["recommendations"]["alert_flags"],
@@ -497,7 +575,14 @@ async def process_scan(
         predict_stream_b(img_gill),
         temperature=1.5,
     )
-    payload = _build_scan_payload(fusion, scan_id, display_id)
+    # Issue #172: run species classification on the body image (best signal
+    # for whole-fish species). Returns None on any failure, so the response
+    # keeps `species=None` and the scan still succeeds (200) per the issue's
+    # acceptance criteria.
+    species_pred = _classify_species(img_body)
+    payload = _build_scan_payload(
+        fusion, scan_id, display_id, species_prediction=species_pred
+    )
 
     try:
         _db().table("scans").insert(
@@ -510,7 +595,7 @@ async def process_scan(
                 "image_type": "full_scan",
                 "freshness_index": payload["freshness_index"],
                 "scan_display_id": display_id,
-                "species_detected": "Rohu Carp",
+                "species_detected": species_pred["name"] if species_pred else "Rohu Carp",
                 "biomarker_json": payload["biomarkers"],
                 "storage_hours": payload["recommendations"]["consume_within_hours"],
                 "alert_flags": payload["recommendations"]["alert_flags"],
@@ -553,7 +638,16 @@ async def scan_auto(
             },
         }
         photo_url = await _upload_image(image_bytes, str(current_user.id), scan_id)
-        payload = _build_scan_payload(demo_fusion, scan_id, display_id, photo_url)
+        # Issue #172: species inference on the single uploaded image. The body
+        # upload is the species signal in scan-auto mode (only one image).
+        try:
+            img_demo = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        except Exception:
+            img_demo = None
+        species_pred = _classify_species(img_demo) if img_demo is not None else None
+        payload = _build_scan_payload(
+            demo_fusion, scan_id, display_id, photo_url, species_prediction=species_pred
+        )
 
         try:
             _db().table("scans").insert(
@@ -565,7 +659,7 @@ async def scan_auto(
                     "image_type": "BODY",
                     "freshness_index": payload["freshness_index"],
                     "scan_display_id": display_id,
-                    "species_detected": "Rohu Carp",
+                    "species_detected": species_pred["name"] if species_pred else "Rohu Carp",
                     "biomarker_json": payload["biomarkers"],
                     "storage_hours": payload["recommendations"]["consume_within_hours"],
                     "alert_flags": payload["recommendations"]["alert_flags"],
@@ -615,7 +709,15 @@ async def scan_auto(
 
     fusion = process_and_fuse(body_logits, eye_logits, gill_logits, temperature=1.5)
     photo_url = await _upload_image(image_bytes, str(current_user.id), scan_id)
-    payload = _build_scan_payload(fusion, scan_id, display_id, photo_url)
+    # Issue #172: run species classification on the available image regardless
+    # of which stream it was routed to (species uses MobileNetV3-Small which
+    # only needs the body silhouette — and an eye/gill crop still contains
+    # enough body shape features because it's not a tight zoom).
+    img_for_species = img  # already a PIL RGB image from line 661 above
+    species_pred = _classify_species(img_for_species)
+    payload = _build_scan_payload(
+        fusion, scan_id, display_id, photo_url, species_prediction=species_pred
+    )
 
     try:
         _db().table("scans").insert(
@@ -627,7 +729,7 @@ async def scan_auto(
                 "image_type": image_type.value,
                 "freshness_index": payload["freshness_index"],
                 "scan_display_id": display_id,
-                "species_detected": "Rohu Carp",
+                "species_detected": species_pred["name"] if species_pred else "Rohu Carp",
                 "biomarker_json": payload["biomarkers"],
                 "storage_hours": payload["recommendations"]["consume_within_hours"],
                 "alert_flags": payload["recommendations"]["alert_flags"],
