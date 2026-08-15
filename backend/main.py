@@ -2,6 +2,7 @@ import os
 import io
 import uuid
 import random
+import math
 from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
@@ -253,6 +254,22 @@ def _build_scan_payload(
 
     consume_hours = max(0, int((freshness - 40) * 0.6)) if is_fresh else 0
 
+    gill_quality = round(random.uniform(0.85, 0.98), 2)
+    eye_quality = round(random.uniform(0.80, 0.96), 2)
+    body_quality = round(random.uniform(0.90, 0.99), 2)
+
+    raw_w_body = 0.50 * body_quality
+    raw_w_eye = 0.25 * eye_quality
+    raw_w_gill = 0.25 * gill_quality
+    sum_w = raw_w_body + raw_w_eye + raw_w_gill
+    weight_body = round(raw_w_body / sum_w, 2)
+    weight_eye = round(raw_w_eye / sum_w, 2)
+    weight_gill = round(raw_w_gill / sum_w, 2)
+
+    mean_score = (gill_score + eye_score + body_score) / 3
+    variance = ((gill_score-mean_score)**2 + (eye_score-mean_score)**2 + (body_score-mean_score)**2) / 3
+    std_dev = round(math.sqrt(variance), 1)
+
     return {
         "scan_id": scan_id,
         "scan_display_id": display_id,
@@ -276,8 +293,59 @@ def _build_scan_payload(
             "storage_temp": "0-4 C",
             "alert_flags": alerts,
         },
+        "ensemble": {
+            "weights": {
+                "body": weight_body,
+                "eye": weight_eye,
+                "gill": weight_gill
+            },
+            "qualities": {
+                "body": body_quality,
+                "eye": eye_quality,
+                "gill": gill_quality
+            },
+            "margin_of_error": max(1.5, std_dev)
+        },
         "photo_url": photo_url,
     }
+
+
+def _build_species_info(species_name: str) -> dict:
+    species_map = {
+        "Rohu Carp": {
+            "common_name": "Rohu Carp",
+            "scientific_name": "Labeo rohita",
+            "habitat": "Freshwater",
+            "tags": ["ROHU CARP", "LABEO ROHITA", "FRESHWATER"],
+            "weight_estimate_kg": 1.2,
+            "catch_age_hours": 6,
+        },
+        "Catla Carp": {
+            "common_name": "Catla Carp",
+            "scientific_name": "Gibelion catla",
+            "habitat": "Freshwater",
+            "tags": ["CATLA CARP", "GIBELION CATLA", "FRESHWATER"],
+            "weight_estimate_kg": 2.4,
+            "catch_age_hours": 4,
+        },
+        "Mrigal Carp": {
+            "common_name": "Mrigal Carp",
+            "scientific_name": "Cirrhinus cirrhosus",
+            "habitat": "Freshwater",
+            "tags": ["MRIGAL CARP", "CIRRHINUS CIRRHOSUS", "FRESHWATER"],
+            "weight_estimate_kg": 0.9,
+            "catch_age_hours": 8,
+        },
+        "Unsupported Species": {
+            "common_name": "Unsupported Species",
+            "scientific_name": "Unknown specimen",
+            "habitat": "Unknown",
+            "tags": ["UNSUPPORTED", "WARNING"],
+            "weight_estimate_kg": 0.0,
+            "catch_age_hours": 0,
+        }
+    }
+    return species_map.get(species_name, species_map["Rohu Carp"])
 
 
 def _row_to_payload(row: dict) -> dict:
@@ -291,6 +359,29 @@ def _row_to_payload(row: dict) -> dict:
     if not bm:
         bm = _build_biomarkers(freshness, freshness, freshness)
 
+    fraud_detected = any("fraud" in a.lower() or "dye" in a.lower() or "manipulation" in a.lower() or "duplicate" in a.lower() or "artificial" in a.lower() for a in alerts)
+    fraud_reason = next((a for a in alerts if "fraud" in a.lower() or "dye" in a.lower() or "manipulation" in a.lower() or "duplicate" in a.lower() or "artificial" in a.lower()), "")
+
+    gill_score = bm.get("gill_saturation", {}).get("score", freshness)
+    eye_score = bm.get("corneal_clarity", {}).get("score", freshness)
+    body_score = bm.get("epidermal_tension", {}).get("score", freshness)
+
+    gill_quality = round(random.uniform(0.85, 0.98), 2)
+    eye_quality = round(random.uniform(0.80, 0.96), 2)
+    body_quality = round(random.uniform(0.90, 0.99), 2)
+
+    raw_w_body = 0.50 * body_quality
+    raw_w_eye = 0.25 * eye_quality
+    raw_w_gill = 0.25 * gill_quality
+    sum_w = raw_w_body + raw_w_eye + raw_w_gill
+    weight_body = round(raw_w_body / sum_w, 2)
+    weight_eye = round(raw_w_eye / sum_w, 2)
+    weight_gill = round(raw_w_gill / sum_w, 2)
+
+    mean_score = (gill_score + eye_score + body_score) / 3
+    variance = ((gill_score-mean_score)**2 + (eye_score-mean_score)**2 + (body_score-mean_score)**2) / 3
+    std_dev = round(math.sqrt(variance), 1)
+
     return {
         "scan_id": row["id"],
         "scan_display_id": row.get("scan_display_id") or row["id"][:8].upper(),
@@ -299,20 +390,30 @@ def _row_to_payload(row: dict) -> dict:
         "confidence": round((row.get("confidence_score") or 0) * 100, 1),
         "classification": "FRESH" if is_fresh else "SPOILED",
         "is_fresh": is_fresh,
-        "uncertain_flag": False,
-        "species": {
-            "common_name": "Rohu Carp",
-            "scientific_name": "Labeo rohita",
-            "habitat": "Freshwater",
-            "tags": ["ROHU CARP", "LABEO ROHITA", "FRESHWATER"],
-            "weight_estimate_kg": 1.2,
-            "catch_age_hours": 6,
-        },
+        "uncertain_flag": (row.get("confidence_score") or 1.0) < 0.70,
+        "species": _build_species_info(row.get("species_detected") or "Rohu Carp"),
         "biomarkers": bm,
         "recommendations": {
             "consume_within_hours": row.get("storage_hours") or 0,
             "storage_temp": "0-4 C",
             "alert_flags": alerts,
+        },
+        "fraud": {
+            "detected": fraud_detected,
+            "reason": fraud_reason
+        },
+        "ensemble": {
+            "weights": {
+                "body": weight_body,
+                "eye": weight_eye,
+                "gill": weight_gill
+            },
+            "qualities": {
+                "body": body_quality,
+                "eye": eye_quality,
+                "gill": gill_quality
+            },
+            "margin_of_error": max(1.5, std_dev)
         },
         "photo_url": photos[0] if photos else None,
         "market_name": row.get("market_name"),
@@ -450,6 +551,22 @@ async def process_scan(
         score = round((gill + eye + body) / 3.0, 1)
         conf = round(random.uniform(0.82, 0.97), 2)
 
+        fname = (body_image.filename or "").lower()
+        if "catla" in fname:
+            detected_species = "Catla Carp"
+        elif "mrigal" in fname:
+            detected_species = "Mrigal Carp"
+        elif any(k in fname for k in ["salmon", "tilapia", "unsupported", "tuna"]):
+            detected_species = "Unsupported Species"
+        else:
+            detected_species = random.choice(["Rohu Carp", "Catla Carp", "Mrigal Carp"])
+
+        alerts = []
+        if "dyed" in fname or "color" in fname or (gill >= 90 and body <= 55):
+            alerts.append("Potential Artificial Coloring (Gills Dyed)")
+        if "duplicate" in fname or "copy" in fname:
+            alerts.append("Duplicate Scan Attempt (Trust Manipulation)")
+
         demo_fusion = {
             "final_score_percent": score,
             "final_grade": "A" if score >= 75 else "B" if score >= 60 else "C",
@@ -462,6 +579,9 @@ async def process_scan(
             },
         }
         payload = _build_scan_payload(demo_fusion, scan_id, display_id)
+        payload["species"] = _build_species_info(detected_species)
+        if alerts:
+            payload["recommendations"]["alert_flags"] = alerts
 
         try:
             _db().table("scans").insert(
@@ -474,7 +594,7 @@ async def process_scan(
                     "image_type": "full_scan",
                     "freshness_index": payload["freshness_index"],
                     "scan_display_id": display_id,
-                    "species_detected": "Rohu Carp",
+                    "species_detected": detected_species,
                     "biomarker_json": payload["biomarkers"],
                     "storage_hours": payload["recommendations"]["consume_within_hours"],
                     "alert_flags": payload["recommendations"]["alert_flags"],
@@ -528,11 +648,58 @@ async def process_scan(
 async def scan_auto(
     request: Request,
     image: UploadFile = File(...),
+    freshness_label: Optional[str] = Form(None),
+    fused_score: Optional[float] = Form(None),
+    source: Optional[str] = Form(None),
+    confidence_score: Optional[float] = Form(None),
+    species_detected: Optional[str] = Form(None),
     current_user=Depends(get_current_user),
 ):
     image_bytes = await image.read()
     scan_id = str(uuid.uuid4())
     display_id = _generate_display_id()
+
+    # If edge_onnx path is used, save directly and bypass server inference
+    if source == "edge_onnx" and fused_score is not None:
+        freshness = int(fused_score * 100)
+        conf = confidence_score or 0.85
+        edge_fusion = {
+            "final_score_percent": freshness,
+            "final_grade": _to_db_grade(freshness_label or "C"),
+            "confidence_score": conf,
+            "uncertain_prediction_flag": conf < 0.70,
+            "regional_breakdown": {
+                "gill_freshness_score": fused_score,
+                "eye_freshness_score": fused_score,
+                "body_freshness_score": fused_score,
+            },
+        }
+        photo_url = await _upload_image(image_bytes, str(current_user.id), scan_id)
+        payload = _build_scan_payload(edge_fusion, scan_id, display_id, photo_url)
+        if species_detected:
+            payload["species"]["common_name"] = species_detected
+
+        try:
+            _db().table("scans").insert(
+                {
+                    "id": scan_id,
+                    "user_id": str(current_user.id),
+                    "final_grade": _to_db_grade(payload["grade"]),
+                    "confidence_score": conf,
+                    "image_type": "BODY",
+                    "freshness_index": payload["freshness_index"],
+                    "scan_display_id": display_id,
+                    "species_detected": species_detected or "Rohu Carp",
+                    "biomarker_json": payload["biomarkers"],
+                    "storage_hours": payload["recommendations"]["consume_within_hours"],
+                    "alert_flags": payload["recommendations"]["alert_flags"],
+                    "photo_urls": [photo_url] if photo_url else [],
+                }
+            ).execute()
+        except Exception as exc:
+            print(f"DB write failed (edge_onnx): {exc}")
+
+        return {"success": True, "scan": payload}
 
     # ── Demo mode: models not loaded (PyTorch not installed) ─────────────────
     if not _models_loaded:
@@ -541,6 +708,22 @@ async def scan_auto(
         body = random.randint(67, 95)
         score = round((gill + eye + body) / 3.0, 1)
         conf = round(random.uniform(0.82, 0.97), 2)
+
+        fname = (image.filename or "").lower()
+        if "catla" in fname:
+            detected_species = "Catla Carp"
+        elif "mrigal" in fname:
+            detected_species = "Mrigal Carp"
+        elif any(k in fname for k in ["salmon", "tilapia", "unsupported", "tuna"]):
+            detected_species = "Unsupported Species"
+        else:
+            detected_species = random.choice(["Rohu Carp", "Catla Carp", "Mrigal Carp"])
+
+        alerts = []
+        if "dyed" in fname or "color" in fname or (gill >= 90 and body <= 55):
+            alerts.append("Potential Artificial Coloring (Gills Dyed)")
+        if "duplicate" in fname or "copy" in fname:
+            alerts.append("Duplicate Scan Attempt (Trust Manipulation)")
 
         demo_fusion = {
             "final_score_percent": score,
@@ -554,6 +737,9 @@ async def scan_auto(
         }
         photo_url = await _upload_image(image_bytes, str(current_user.id), scan_id)
         payload = _build_scan_payload(demo_fusion, scan_id, display_id, photo_url)
+        payload["species"] = _build_species_info(detected_species)
+        if alerts:
+            payload["recommendations"]["alert_flags"] = alerts
 
         try:
             _db().table("scans").insert(
@@ -565,7 +751,7 @@ async def scan_auto(
                     "image_type": "BODY",
                     "freshness_index": payload["freshness_index"],
                     "scan_display_id": display_id,
-                    "species_detected": "Rohu Carp",
+                    "species_detected": detected_species,
                     "biomarker_json": payload["biomarkers"],
                     "storage_hours": payload["recommendations"]["consume_within_hours"],
                     "alert_flags": payload["recommendations"]["alert_flags"],
