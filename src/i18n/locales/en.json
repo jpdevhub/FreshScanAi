@@ -108,7 +108,12 @@
     "notFishDetected": "NOT A FISH: No fish detected. Please photograph a fish.",
     "inferenceFailed": "Inference failed.",
     "capturedAlt": "Captured",
-    "rejectedUploadAlt": "Rejected upload"
+    "rejectedUploadAlt": "Rejected upload",
+    "syncingScans": "Syncing offline scans in background...",
+    "syncSuccess": "Successfully synchronized offline scans!",
+    "savedOffline": "Saved scan locally (offline mode)",
+    "pendingSyncScans": "OFFLINE SCANS PENDING SYNC",
+    "syncNowButton": "SYNC NOW"
   },
   "dashboard": {
     "loadingAnalysis": "LOADING ANALYSIS...",
@@ -144,7 +149,13 @@
     "storageTemp": "STORAGE TEMP",
     "alertLabel": "ALERT",
     "newScanButton": "NEW SCAN",
-    "viewHistoryButton": "VIEW HISTORY"
+    "viewHistoryButton": "VIEW HISTORY",
+    "uncertainWarningTitle": "AI Prediction Uncertain",
+    "uncertainWarningDesc": "The model detected high variance in input quality (e.g. lighting shadows or off-angles). The freshness index might be less reliable than usual.",
+    "suggestRescan": "→ Suggest Rescanning specimen",
+    "uncertaintyMargin": "Margin of Error:",
+    "assessmentReportTab": "ASSESSMENT REPORT",
+    "analyticsTrendsTab": "MARKET TRENDS"
   },
   "auth": {
     "authInitiated": "AUTH INITIATED",
@@ -393,6 +404,18 @@
     "tryDifferentFilter": "Try a different filter",
     "days7": "7 Days",
     "days30": "30 Days",
-    "allTime": "All Time"
+    "allTime": "All Time",
+    "noData": "INSUFFICIENT HISTORY DATA FOR TREND ANALYSIS",
+    "freshnessTrendLabel": "Quality Assessment Trend",
+    "indexHistory": "Freshness Index History",
+    "dailyTab": "DAILY",
+    "weeklyTab": "WEEKLY",
+    "marketPerformance": "Vendor Performance",
+    "regionalAverages": "Regional Averages",
+    "noVendors": "NO VENDOR RECORDS AVAILABLE",
+    "northRegion": "North Fish Market Hub",
+    "southWholesale": "South Wholesale Port",
+    "eastStalls": "East Municipal Stalls",
+    "deltaDocks": "Delta Landing Docks"
   }
 }
