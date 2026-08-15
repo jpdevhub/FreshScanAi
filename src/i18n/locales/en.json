@@ -108,7 +108,12 @@
     "notFishDetected": "NOT A FISH: No fish detected. Please photograph a fish.",
     "inferenceFailed": "Inference failed.",
     "capturedAlt": "Captured",
-    "rejectedUploadAlt": "Rejected upload"
+    "rejectedUploadAlt": "Rejected upload",
+    "syncingScans": "Syncing offline scans in background...",
+    "syncSuccess": "Successfully synchronized offline scans!",
+    "savedOffline": "Saved scan locally (offline mode)",
+    "pendingSyncScans": "OFFLINE SCANS PENDING SYNC",
+    "syncNowButton": "SYNC NOW"
   },
   "dashboard": {
     "loadingAnalysis": "LOADING ANALYSIS...",
@@ -144,7 +149,25 @@
     "storageTemp": "STORAGE TEMP",
     "alertLabel": "ALERT",
     "newScanButton": "NEW SCAN",
-    "viewHistoryButton": "VIEW HISTORY"
+    "viewHistoryButton": "VIEW HISTORY",
+    "uncertainWarningTitle": "AI Prediction Uncertain",
+    "uncertainWarningDesc": "The model detected high variance in input quality (e.g. lighting shadows or off-angles). The freshness index might be less reliable than usual.",
+    "suggestRescan": "→ Suggest Rescanning specimen",
+    "uncertaintyMargin": "Margin of Error:",
+    "assessmentReportTab": "ASSESSMENT REPORT",
+    "analyticsTrendsTab": "MARKET TRENDS",
+    "unsupportedSpeciesWarningTitle": "Unsupported Species Detected",
+    "unsupportedSpeciesWarningDesc": "This model is calibrated specifically for South Asian Carps (Rohu, Catla, Mrigal). Textural and structural markers for other species might result in inaccurate grading.",
+    "culinaryAdviceTitle": "Culinary Recommendations",
+    "culinaryHigh": "Raw/Sushi-grade freshness. Ideal for light steaming, pan-searing, or immediate raw preparation.",
+    "culinaryModerate": "High-quality cooking grade. Optimal for traditional fish curries, baking, or light grilling.",
+    "culinaryLow": "Requires heavy spicing or deep frying to offset texture softenings. Ensure thorough cooking.",
+    "culinarySpoiled": "Discard immediately. Do not consume under any circumstances.",
+    "preservationTitle": "Preservation Protocol",
+    "preservRohu": "Rohu has dense scales. Rub with turmeric paste before refrigerating to prevent skin dehydration.",
+    "preservCatla": "Catla is a thick steak-cut. Slice into small portions before freezing to ensure uniform cooling.",
+    "preservMrigal": "Mrigal has a thin build. Store flat in ice; do not stack to avoid muscular tissue bruising.",
+    "preservDefault": "Store below 4°C. vacuum seal or wrap tightly in parchment paper to prevent freezer burn."
   },
   "auth": {
     "authInitiated": "AUTH INITIATED",
@@ -181,7 +204,20 @@
     "percentageSymbol": "%",
     "noScansFound": "NO SCANS FOUND",
     "runFirstScan": "RUN FIRST SCAN",
-    "initiateFirstScan": "INITIATE FIRST SCAN"
+    "initiateFirstScan": "INITIATE FIRST SCAN",
+    "enterCompare": "COMPARE SCANS",
+    "exitCompare": "CANCEL COMPARE",
+    "selectOneMore": "SELECT 1 MORE SCAN TO COMPARE",
+    "readyToCompare": "2 SCANS SELECTED FOR COMPARISON",
+    "compareNow": "COMPARE NOW",
+    "compareTitle": "Biomarker Freshness Comparison",
+    "sideBySide": "Specimen Comparison Mode",
+    "varianceLabel": "Variance & Decay Metrics",
+    "identicalFreshness": "Specimens have identical freshness indices.",
+    "specimenA": "Specimen A",
+    "fresher": "fresher",
+    "moreDecayed": "more decayed",
+    "thanSpecimenB": "than Specimen B"
   },
   "marketMap": {
     "failedLoadMarketData": "Failed to load live market data.",
@@ -221,7 +257,13 @@
     "scansLabel": "SCANS",
     "scans": "Scans",
     "subtitle": "RANKINGS BASED ON ANONYMOUS FRESHNESS SCANS ACROSS MARKETS",
-    "title": "VENDOR TRUST LEADERBOARD"
+    "title": "VENDOR TRUST LEADERBOARD",
+    "vendorDetailsHeader": "VENDOR REPUTATION DETAILS",
+    "trustIndex": "TRUST INDEX",
+    "scansRecorded": "SCANS RECORDED",
+    "reportDiscrepancy": "FILE FRESHNESS REPORT",
+    "reportPlaceholder": "Enter details of the fish freshness bought, or any dispute...",
+    "recentReports": "VERIFIED CONSUMER FEED"
   },
   "modeSelect": {
     "individual": {
@@ -393,6 +435,18 @@
     "tryDifferentFilter": "Try a different filter",
     "days7": "7 Days",
     "days30": "30 Days",
-    "allTime": "All Time"
+    "allTime": "All Time",
+    "noData": "INSUFFICIENT HISTORY DATA FOR TREND ANALYSIS",
+    "freshnessTrendLabel": "Quality Assessment Trend",
+    "indexHistory": "Freshness Index History",
+    "dailyTab": "DAILY",
+    "weeklyTab": "WEEKLY",
+    "marketPerformance": "Vendor Performance",
+    "regionalAverages": "Regional Averages",
+    "noVendors": "NO VENDOR RECORDS AVAILABLE",
+    "northRegion": "North Fish Market Hub",
+    "southWholesale": "South Wholesale Port",
+    "eastStalls": "East Municipal Stalls",
+    "deltaDocks": "Delta Landing Docks"
   }
 }
