@@ -44,6 +44,7 @@ export interface HistoryScan {
   grade: string;
   is_fresh: boolean;
   market_name: string;
+  city?: string;
   timestamp: string;
   photo_url?: string;
   confidence_score: number;

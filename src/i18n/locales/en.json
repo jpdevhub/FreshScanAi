@@ -55,17 +55,17 @@
     "getGradeTitle": "Get Grade",
     "getGradeDesc": "Instant Freshness Index (0-100) generated with storage recommendations.",
     "faq": {
-    "q1": "How does the dual-stream AI model work?",
-    "a1": "FreshScan uses two specialized neural networks in parallel. Stream A (MobileNetV2) analyzes the full fish body for overall freshness classification while Stream B (BiomarkerCNN) inspects micro-regions like eyes and gills. Their outputs are fused to produce the final Freshness Index.",
-    "q2": "What do the freshness grades mean?",
-    "a2": "The Freshness Index (0-100) maps to letter grades: A+ (≥92), A (≥80), B (≥65), C (≥50), D (<50). Higher scores indicate better preservation and longer safe storage windows.",
-    "q3": "What is Auto-Scan mode vs. manual scan?",
-    "a3": "Auto-Scan accepts a single photo and runs validation and both model streams automatically. Manual scan allows uploading separate Body, Eye, and Gill images for a more granular assessment.",
-    "q4": "What is the Grad-CAM overlay?",
-    "a4": "Grad-CAM produces a heatmap that highlights image regions that influenced the model's prediction, helping you see which features (gills, eyes, scales) contributed most to the grade.",
-    "q5": "What is the Trust Map?",
-    "a5": "The Trust Map is a live, crowdsourced heatmap of vendor freshness aggregated from anonymized scans, helping you find consistently high-quality sellers."
-  }
+      "q1": "How does the dual-stream AI model work?",
+      "a1": "FreshScan uses two specialized neural networks in parallel. Stream A (MobileNetV2) analyzes the full fish body for overall freshness classification while Stream B (BiomarkerCNN) inspects micro-regions like eyes and gills. Their outputs are fused to produce the final Freshness Index.",
+      "q2": "What do the freshness grades mean?",
+      "a2": "The Freshness Index (0-100) maps to letter grades: A+ (≥92), A (≥80), B (≥65), C (≥50), D (<50). Higher scores indicate better preservation and longer safe storage windows.",
+      "q3": "What is Auto-Scan mode vs. manual scan?",
+      "a3": "Auto-Scan accepts a single photo and runs validation and both model streams automatically. Manual scan allows uploading separate Body, Eye, and Gill images for a more granular assessment.",
+      "q4": "What is the Grad-CAM overlay?",
+      "a4": "Grad-CAM produces a heatmap that highlights image regions that influenced the model's prediction, helping you see which features (gills, eyes, scales) contributed most to the grade.",
+      "q5": "What is the Trust Map?",
+      "a5": "The Trust Map is a live, crowdsourced heatmap of vendor freshness aggregated from anonymized scans, helping you find consistently high-quality sellers."
+    }
   },
   "scanner": {
     "cameraAccessNeeded": "Camera Access Needed",
@@ -165,6 +165,16 @@
     "localOnlyNote": "[local only]"
   },
   "results": {
+    "exportCsv": "Export CSV",
+    "historyTitle": "History",
+    "viewAnalytics": "View Analytics Dashboard",
+    "csvDate": "Date",
+    "csvTime": "Time",
+    "csvScanId": "Scan ID",
+    "csvGrade": "Grade",
+    "csvFreshness": "Freshness Score",
+    "csvSpecies": "Species",
+    "csvMarket": "Market",
     "loadingHistory": "LOADING HISTORY...",
     "queryingDb": "QUERYING DB",
     "historyLoadFailed": "HISTORY LOAD FAILED",
@@ -394,5 +404,17 @@
     "days7": "7 Days",
     "days30": "30 Days",
     "allTime": "All Time"
+  },
+  "faqPage": {
+    "watermark": "USER_GUIDE_AND_FAQ",
+    "titleLine1": "How To Use",
+    "titleLine2": "FreshScan AI",
+    "subtitle": "Learn how to scan fish correctly, understand freshness scores, and use the Market Map effectively.",
+    "q1": "How should I position the fish for scanning?",
+    "a1": "Place the fish on a flat surface with good lighting. Keep the camera around 15 cm away and ensure the whole fish is visible.",
+    "q2": "What do the freshness scores mean?",
+    "a2": "Scores range from 0 to 100. Higher scores indicate fresher fish. Scores above 80 are considered high quality.",
+    "q3": "How does the Market Map work?",
+    "a3": "The Market Map displays freshness trends from anonymized scan results and helps users identify reliable seafood vendors."
   }
-}
+}
