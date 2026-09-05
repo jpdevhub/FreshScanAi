@@ -86,3 +86,4 @@ secrets.env
 # Local DB / artifacts
 *.sqlite3
 *.db
+presentation.txt

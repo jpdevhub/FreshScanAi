@@ -16,15 +16,7 @@ from fastapi_cache.backends.inmemory import InMemoryBackend
 from fastapi_cache.decorator import cache
 from chat_router import router as chat_router
 
-
-
-# Load .env file if present (python-dotenv)
-try:
-    from dotenv import load_dotenv
-
-    load_dotenv(Path(__file__).parent / ".env", override=True)
-except ImportError:
-    pass
+from config import settings
 
 from fastapi import Body, FastAPI, File, UploadFile, Form, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,27 +35,16 @@ except ModuleNotFoundError:
     _torch_available = False
     print("WARNING: PyTorch not installed. Scan endpoints will return 503.")
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-# All secrets MUST come from environment variables — no hardcoded fallbacks.
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
-SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
-# CORS_ALLOW_ALL=true → open (local dev). Unset or false → locked to FRONTEND_URL (production).
-CORS_ALLOW_ALL = os.environ.get("CORS_ALLOW_ALL", "false").lower() == "true"
-
-# Model paths — resolve relative to repo root, fully overridable via env vars
-_repo_root = Path(__file__).parent.parent
-MODEL_DIR = Path(os.environ.get("MODEL_DIR", str(_repo_root / "Models")))
-STREAM_A_PATH = os.environ.get("STREAM_A_MODEL", str(MODEL_DIR / "freshscan_stream_a_body.pth"))
-STREAM_B_PATH = os.environ.get("STREAM_B_MODEL", str(MODEL_DIR / "stream_b_checkpoint.pth"))
-
-
-# ── Supabase clients ──────────────────────────────────────────────────────────
-supabase: Optional[Client] = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_KEY else None
+# ── Supabase clients (initialized from validated settings) ────────────────────
+supabase: Optional[Client] = (
+    create_client(settings.supabase_url, settings.supabase_key)
+    if settings.supabase_key
+    else None
+)
 supabase_service: Optional[Client] = (
-    create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY) if SUPABASE_SERVICE_KEY else None
+    create_client(settings.supabase_url, settings.supabase_service_key)
+    if settings.supabase_service_key
+    else None
 )
 
 
@@ -71,31 +52,30 @@ def _db() -> Client:
     client = supabase_service or supabase
     if client is None:
         raise HTTPException(
-            status_code=503,
+            status_code=503,  # Server error
             detail="Database client not configured. Set SUPABASE_KEY.",
         )
     return client
 
 
-# ── App lifespan ──────────────────────────────────────────────────────────────
+# ── App lifespan ───
 _models_loaded = False
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _models_loaded
-    a = Path(STREAM_A_PATH)
-    b = Path(STREAM_B_PATH)
+    a = Path(settings.get_stream_a_path())
+    b = Path(settings.get_stream_b_path())
     if not _torch_available:
         print("WARNING: PyTorch not installed. Scan endpoints will return 503.")
     elif a.exists() and b.exists():
-        print(f"Loading models from {MODEL_DIR} ...")
+        print(f"Loading models from {settings.model_dir} ...")
         load_models(str(a), str(b))
         _models_loaded = True
         print("Models loaded successfully.")
     else:
         print(
-            f"WARNING: Model files not found at {MODEL_DIR}. "
+            f"WARNING: Model files not found at {settings.model_dir}. "
             "Scan endpoints will return 503 until models are present."
         )
     FastAPICache.init(InMemoryBackend(), prefix="freshscanai-cache")
@@ -104,15 +84,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="FreshScan AI", version="1.1.0", lifespan=lifespan)
 
-# Parse ADDITIONAL_CORS_ORIGINS from environment
-ADDITIONAL_CORS_ORIGINS = os.environ.get("ADDITIONAL_CORS_ORIGINS", "").split(",")
 _cors_origins = (
     ["*"]
-    if CORS_ALLOW_ALL
+    if settings.cors_allow_all
     else [
-        FRONTEND_URL,
-        "https://fresh-scanai.vercel.app",  # production frontend
-        *[origin.strip() for origin in ADDITIONAL_CORS_ORIGINS if origin.strip()],
+        settings.frontend_url,
+        "https://fresh-scanai.vercel.app",  # we have to change
+        *[o.strip() for o in settings.additional_cors_origins.split(",") if o.strip()],
     ]
 )
 
@@ -140,7 +118,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         headers={"Retry-After": exc.headers.get("Retry-After", "60")},
     )
 
-# ── Health check ──────────────────────────────────────────────────────────────
+# ─ Health check ─
 # HF Spaces polls GET /?logs=container — without this route, FastAPI returns
 # 404 and HF Spaces may mark the container as unhealthy.
 
@@ -154,7 +132,7 @@ async def health_check():
     }
 
 
-# ── Domain helpers ────────────────────────────────────────────────────────────
+# ── Domain helpers ──
 
 
 def _read_image(upload: UploadFile) -> Image.Image:

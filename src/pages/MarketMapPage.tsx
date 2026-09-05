@@ -13,10 +13,12 @@ import { useTranslation } from 'react-i18next';
 import { api } from "../lib/api";
 import type { Market } from "../lib/types";
 
+// Stadia Maps tile layers — API key loaded from VITE_STADIA_API_KEY in .env.local
+const _STADIA_KEY = import.meta.env.VITE_STADIA_API_KEY ?? "";
 const TILE_DARK =
-  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+  `https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png?api_key=${_STADIA_KEY}`;
 const TILE_LIGHT =
-  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+  `https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png?api_key=${_STADIA_KEY}`;
 
 function getActiveTile() {
   return document.documentElement.classList.contains("light")
@@ -220,7 +222,10 @@ export default function MarketMapPage() {
           className="w-full h-full z-0"
         >
           <RecenterMap center={mapCenter} />
-          <TileLayer url={tileUrl} attribution="&copy; CARTO" />
+          <TileLayer
+            url={tileUrl}
+            attribution='&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
+          />
           <MarkerClusterGroup
             chunkedLoading
             iconCreateFunction={createClusterIcon}

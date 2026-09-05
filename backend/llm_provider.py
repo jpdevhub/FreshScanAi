@@ -230,7 +230,7 @@ class GroqProvider(LLMProvider):
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.model = os.environ.get(
-            "GROQ_MODEL", "llama-3.3-70b-versatile"
+            "GROQ_MODEL", "openai/gpt-oss-20b"
         )
 
     def generate_response(
@@ -347,7 +347,7 @@ class MockProvider(LLMProvider):
 
 
 def get_llm_provider() -> LLMProvider:
-    provider_name = os.environ.get("LLM_PROVIDER", "gemini").lower()
+    provider_name = os.environ.get("LLM_PROVIDER", "groq").lower()
 
     if provider_name == "gemini":
         api_key = os.environ.get("GEMINI_API_KEY")
