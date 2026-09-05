@@ -368,11 +368,11 @@ async def auth_callback(code: str = Query(...)):
         access_token = session.access_token
         refresh_token = session.refresh_token or ""
         redirect_url = (
-            f"{FRONTEND_URL}/auth?access_token={access_token}&refresh_token={refresh_token}"
+            f"{settings.frontend_url}/auth?access_token={access_token}&refresh_token={refresh_token}"
         )
         return RedirectResponse(url=redirect_url)
     except Exception as exc:
-        error_url = f"{FRONTEND_URL}/auth?error=auth_failed"
+        error_url = f"{settings.frontend_url}/auth?error=auth_failed"
         print(f"Auth callback error: {exc}")
         return RedirectResponse(url=error_url)
 
