@@ -1,4 +1,3 @@
-import os
 import io
 import uuid
 import random
@@ -320,7 +319,7 @@ async def api_health_check():
     return {"status": "ok"}
 
 def _auth_redirect_url() -> str:
-    callback_url = f"{API_BASE_URL}/api/v1/auth/callback"
+    callback_url = f"{settings.api_base_url}/api/v1/auth/callback"
     return get_google_oauth_url(redirect_to=callback_url)
 
 

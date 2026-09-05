@@ -19,18 +19,18 @@ class Settings(BaseSettings):
     supabase_url: str = Field(..., description="Supabase project URL")
     supabase_key: str = Field(..., description="Supabase anon/public key")
     supabase_service_key: Optional[str] = Field(default="", description="Supabase service role key")
-    
+
     # API & Network Configuration
     api_base_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
     cors_allow_all: bool = False
     additional_cors_origins: str = ""
-    
+
     # Model Configuration
     model_dir: str = str(_repo_root / "Models")
     stream_a_model: Optional[str] = None
     stream_b_model: Optional[str] = None
-    
+
     # Dev / Auth Configuration
     dev_bypass_auth: bool = False
     dev_bypass_token: str = "dev-local-bypass-token"
